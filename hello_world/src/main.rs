@@ -40,10 +40,11 @@ fn setup(
 
     // Sprite
     commands.spawn(SpriteBundle {
-        texture: asset_server.load("branding/bevy_bird_dark.png"),
+        texture: asset_server.load("branding/idle_down.png"),
         sprite: Sprite {
-            color: Color::srgb(5.0, 5.0, 5.0), // 4. Put something bright in a dark environment to see the effect
+            color: Color::srgb(2.0, 2.0, 2.0), // 4. Put something bright in a dark environment to see the effect
             custom_size: Some(Vec2::splat(160.0)),
+            rect: Some(Rect::new(48.0 * 0.0, 0.0, 48.0 * 1.0, 64.0)),
             ..default()
         },
         ..default()
@@ -51,18 +52,16 @@ fn setup(
 
     // Circle mesh
     commands.spawn(MaterialMesh2dBundle {
-        mesh: meshes.add(Circle::new(100.)).into(),
-        // 4. Put something bright in a dark environment to see the effect
-        material: materials.add(Color::srgb(7.5, 0.0, 7.5)),
-        transform: Transform::from_translation(Vec3::new(-200., 0., 0.)),
+        mesh: meshes.add(Circle::new(50.)).into(),
+        material: materials.add(Color::srgb(7.5, 2.0, 7.0)),
+        transform: Transform::from_translation(Vec3::new(-100., 0., 0.)),
         ..default()
     });
 
     // Hexagon mesh
     commands.spawn(MaterialMesh2dBundle {
-        mesh: meshes.add(RegularPolygon::new(100., 6)).into(),
-        // 4. Put something bright in a dark environment to see the effect
-        material: materials.add(Color::srgb(6.25, 9.4, 9.1)),
+        mesh: meshes.add(RegularPolygon::new(100., 5)).into(),
+        material: materials.add(Color::srgb(2.0, 2.0, 8.0)),
         transform: Transform::from_translation(Vec3::new(200., 0., 0.)),
         ..default()
     });
