@@ -1,200 +1,205 @@
-// Eric kim
-// Play ground
+// eric
+use std::mem;
 
 use bevy::{
-    core_pipeline::{
-        bloom::{BloomCompositeMode, BloomSettings},
-        tonemapping::Tonemapping,
+    input::{
+        keyboard::{Key, KeyboardInput},
+        ButtonState,
     },
     prelude::*,
-    sprite::MaterialMesh2dBundle,
 };
 
 fn main() {
     App::new()
         .add_plugins(DefaultPlugins)
-        .add_systems(Startup, setup)
+        .add_systems(Startup, setup_scene)
+        .add_systems(
+            Update,
+            (
+                toggle_ime,
+                listen_ime_events,
+                listen_keyboard_input_events,
+                bubbling_text,
+            ),
+        )
         .run();
 }
 
+fn setup_scene(mut commands: Commands, asset_server: Res<AssetServer>) {
+    commands.spawn(Camera2dBundle::default());
 
-        // .add_systems(Update, update_bloom_settings)
+    let font = asset_server.load("fonts/D2Coding.ttf");
 
-fn setup(
-    mut commands: Commands,
-    mut meshes: ResMut<Assets<Mesh>>,
-    mut materials: ResMut<Assets<ColorMaterial>>,
-    asset_server: Res<AssetServer>,
-) {
-    commands.spawn((
-        Camera2dBundle {
-            camera: Camera {
-                hdr: true, // 1. HDR is required for bloom
-                ..default()
-            },
-            tonemapping: Tonemapping::TonyMcMapface, // 2. Using a tonemapper that desaturates to white is recommended
-            ..default()
-        },
-        BloomSettings::default(), // 3. Enable bloom for the camera
-    ));
-
-    // Sprite
-    commands.spawn(SpriteBundle {
-        texture: asset_server.load("branding/idle_down.png"),
-        sprite: Sprite {
-            color: Color::srgb(2.0, 2.0, 2.0), // 4. Put something bright in a dark environment to see the effect
-            custom_size: Some(Vec2::splat(160.0)),
-            rect: Some(Rect::new(48.0 * 0.0, 0.0, 48.0 * 1.0, 64.0)),
-            ..default()
-        },
-        ..default()
-    });
-
-    // Circle mesh
-    commands.spawn(MaterialMesh2dBundle {
-        mesh: meshes.add(Circle::new(50.)).into(),
-        material: materials.add(Color::srgb(7.5, 2.0, 7.0)),
-        transform: Transform::from_translation(Vec3::new(-100., 0., 0.)),
-        ..default()
-    });
-
-    // Hexagon mesh
-    commands.spawn(MaterialMesh2dBundle {
-        mesh: meshes.add(RegularPolygon::new(100., 5)).into(),
-        material: materials.add(Color::srgb(2.0, 2.0, 8.0)),
-        transform: Transform::from_translation(Vec3::new(200., 0., 0.)),
-        ..default()
-    });
-
-    // UI
     commands.spawn(
-        TextBundle::from_section("", TextStyle::default()).with_style(Style {
+        TextBundle::from_sections([
+            TextSection {
+                value: "IME Enabled: ".to_string(),
+                style: TextStyle {
+                    font: font.clone_weak(),
+                    ..default()
+                },
+            },
+            TextSection {
+                value: "false\n".to_string(),
+                style: TextStyle {
+                    font: font.clone_weak(),
+                    font_size: 30.0,
+                    ..default()
+                },
+            },
+            TextSection {
+                value: "IME Active: ".to_string(),
+                style: TextStyle {
+                    font: font.clone_weak(),
+                    ..default()
+                },
+            },
+            TextSection {
+                value: "false\n".to_string(),
+                style: TextStyle {
+                    font: font.clone_weak(),
+                    font_size: 30.0,
+                    ..default()
+                },
+            },
+            TextSection {
+                value: "click to toggle IME, press return to start a new line\n\n".to_string(),
+                style: TextStyle {
+                    font: font.clone_weak(),
+                    font_size: 18.0,
+                    ..default()
+                },
+            },
+            TextSection {
+                value: "".to_string(),
+                style: TextStyle {
+                    font,
+                    font_size: 25.0,
+                    ..default()
+                },
+            },
+        ])
+        .with_style(Style {
             position_type: PositionType::Absolute,
-            bottom: Val::Px(12.0),
-            left: Val::Px(12.0),
+            top: Val::Px(10.0),
+            left: Val::Px(10.0),
             ..default()
         }),
     );
+
+    commands.spawn(Text2dBundle {
+        text: Text::from_section(
+            "".to_string(),
+            TextStyle {
+                font: asset_server.load("fonts/D2Coding.ttf"),
+                font_size: 100.0,
+                ..default()
+            },
+        ),
+        ..default()
+    });
 }
 
-// ------------------------------------------------------------------------------------------------
+fn toggle_ime(
+    input: Res<ButtonInput<MouseButton>>,
+    mut windows: Query<&mut Window>,
+    mut text: Query<&mut Text, With<Node>>,
+) {
+    if input.just_pressed(MouseButton::Left) {
+        let mut window = windows.single_mut();
 
-fn update_bloom_settings(
-    mut camera: Query<(Entity, Option<&mut BloomSettings>), With<Camera>>,
-    mut text: Query<&mut Text>,
+        window.ime_position = window.cursor_position().unwrap();
+        window.ime_enabled = !window.ime_enabled;
+
+        let mut text = text.single_mut();
+        text.sections[1].value = format!("{}\n", window.ime_enabled);
+    }
+}
+
+#[derive(Component)]
+struct Bubble {
+    timer: Timer,
+}
+
+fn bubbling_text(
     mut commands: Commands,
-    keycode: Res<ButtonInput<KeyCode>>,
+    mut bubbles: Query<(Entity, &mut Transform, &mut Bubble)>,
     time: Res<Time>,
 ) {
-    let bloom_settings = camera.single_mut();
-    let mut text = text.single_mut();
-    let text = &mut text.sections[0].value;
+    for (entity, mut transform, mut bubble) in bubbles.iter_mut() {
+        if bubble.timer.tick(time.delta()).just_finished() {
+            commands.entity(entity).despawn();
+        }
+        transform.translation.y += time.delta_seconds() * 100.0;
+    }
+}
 
-    match bloom_settings {
-        (entity, Some(mut bloom_settings)) => {
-            *text = "BloomSettings (Toggle: Space)\n".to_string();
-            text.push_str(&format!("(Q/A) Intensity: {}\n", bloom_settings.intensity));
-            text.push_str(&format!(
-                "(W/S) Low-frequency boost: {}\n",
-                bloom_settings.low_frequency_boost
-            ));
-            text.push_str(&format!(
-                "(E/D) Low-frequency boost curvature: {}\n",
-                bloom_settings.low_frequency_boost_curvature
-            ));
-            text.push_str(&format!(
-                "(R/F) High-pass frequency: {}\n",
-                bloom_settings.high_pass_frequency
-            ));
-            text.push_str(&format!(
-                "(T/G) Mode: {}\n",
-                match bloom_settings.composite_mode {
-                    BloomCompositeMode::EnergyConserving => "Energy-conserving",
-                    BloomCompositeMode::Additive => "Additive",
-                }
-            ));
-            text.push_str(&format!(
-                "(Y/H) Threshold: {}\n",
-                bloom_settings.prefilter_settings.threshold
-            ));
-            text.push_str(&format!(
-                "(U/J) Threshold softness: {}\n",
-                bloom_settings.prefilter_settings.threshold_softness
-            ));
+fn listen_ime_events(
+    mut events: EventReader<Ime>,
+    mut status_text: Query<&mut Text, With<Node>>,
+    mut edit_text: Query<&mut Text, (Without<Node>, Without<Bubble>)>,
+) {
+    for event in events.read() {
+        match event {
+            Ime::Preedit { value, cursor, .. } if !cursor.is_none() => {
+                status_text.single_mut().sections[5].value = format!("IME buffer: {value}");
+            }
+            Ime::Preedit { cursor, .. } if cursor.is_none() => {
+                status_text.single_mut().sections[5].value = "".to_string();
+            }
+            Ime::Commit { value, .. } => {
+                edit_text.single_mut().sections[0].value.push_str(value);
+            }
+            Ime::Enabled { .. } => {
+                status_text.single_mut().sections[3].value = "true\n".to_string();
+            }
+            Ime::Disabled { .. } => {
+                status_text.single_mut().sections[3].value = "false\n".to_string();
+            }
+            _ => (),
+        }
+    }
+}
 
-            if keycode.just_pressed(KeyCode::Space) {
-                commands.entity(entity).remove::<BloomSettings>();
-            }
-
-            let dt = time.delta_seconds();
-
-            if keycode.pressed(KeyCode::KeyA) {
-                bloom_settings.intensity -= dt / 10.0;
-            }
-            if keycode.pressed(KeyCode::KeyQ) {
-                bloom_settings.intensity += dt / 10.0;
-            }
-            bloom_settings.intensity = bloom_settings.intensity.clamp(0.0, 1.0);
-
-            if keycode.pressed(KeyCode::KeyS) {
-                bloom_settings.low_frequency_boost -= dt / 10.0;
-            }
-            if keycode.pressed(KeyCode::KeyW) {
-                bloom_settings.low_frequency_boost += dt / 10.0;
-            }
-            bloom_settings.low_frequency_boost = bloom_settings.low_frequency_boost.clamp(0.0, 1.0);
-
-            if keycode.pressed(KeyCode::KeyD) {
-                bloom_settings.low_frequency_boost_curvature -= dt / 10.0;
-            }
-            if keycode.pressed(KeyCode::KeyE) {
-                bloom_settings.low_frequency_boost_curvature += dt / 10.0;
-            }
-            bloom_settings.low_frequency_boost_curvature =
-                bloom_settings.low_frequency_boost_curvature.clamp(0.0, 1.0);
-
-            if keycode.pressed(KeyCode::KeyF) {
-                bloom_settings.high_pass_frequency -= dt / 10.0;
-            }
-            if keycode.pressed(KeyCode::KeyR) {
-                bloom_settings.high_pass_frequency += dt / 10.0;
-            }
-            bloom_settings.high_pass_frequency = bloom_settings.high_pass_frequency.clamp(0.0, 1.0);
-
-            if keycode.pressed(KeyCode::KeyG) {
-                bloom_settings.composite_mode = BloomCompositeMode::Additive;
-            }
-            if keycode.pressed(KeyCode::KeyT) {
-                bloom_settings.composite_mode = BloomCompositeMode::EnergyConserving;
-            }
-
-            if keycode.pressed(KeyCode::KeyH) {
-                bloom_settings.prefilter_settings.threshold -= dt;
-            }
-            if keycode.pressed(KeyCode::KeyY) {
-                bloom_settings.prefilter_settings.threshold += dt;
-            }
-            bloom_settings.prefilter_settings.threshold =
-                bloom_settings.prefilter_settings.threshold.max(0.0);
-
-            if keycode.pressed(KeyCode::KeyJ) {
-                bloom_settings.prefilter_settings.threshold_softness -= dt / 10.0;
-            }
-            if keycode.pressed(KeyCode::KeyU) {
-                bloom_settings.prefilter_settings.threshold_softness += dt / 10.0;
-            }
-            bloom_settings.prefilter_settings.threshold_softness = bloom_settings
-                .prefilter_settings
-                .threshold_softness
-                .clamp(0.0, 1.0);
+fn listen_keyboard_input_events(
+    mut commands: Commands,
+    mut events: EventReader<KeyboardInput>,
+    mut edit_text: Query<&mut Text, (Without<Node>, Without<Bubble>)>,
+) {
+    for event in events.read() {
+        // Only trigger changes when the key is first pressed.
+        if event.state == ButtonState::Released {
+            continue;
         }
 
-        (entity, None) => {
-            *text = "Bloom: Off (Toggle: Space)".to_string();
+        match &event.logical_key {
+            Key::Enter => {
+                let mut text = edit_text.single_mut();
+                if text.sections[0].value.is_empty() {
+                    continue;
+                }
+                let old_value = mem::take(&mut text.sections[0].value);
 
-            if keycode.just_pressed(KeyCode::Space) {
-                commands.entity(entity).insert(BloomSettings::default());
+                commands.spawn((
+                    Text2dBundle {
+                        text: Text::from_section(old_value, text.sections[0].style.clone()),
+                        ..default()
+                    },
+                    Bubble {
+                        timer: Timer::from_seconds(5.0, TimerMode::Once),
+                    },
+                ));
             }
+            Key::Space => {
+                edit_text.single_mut().sections[0].value.push(' ');
+            }
+            Key::Backspace => {
+                edit_text.single_mut().sections[0].value.pop();
+            }
+            Key::Character(character) => {
+                edit_text.single_mut().sections[0].value.push_str(character);
+            }
+            _ => continue,
         }
     }
 }
