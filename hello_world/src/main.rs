@@ -1,5 +1,5 @@
 // eric
-use std::mem;
+use std::{mem, time::Duration};
 
 use bevy::{
     input::{
@@ -11,7 +11,15 @@ use bevy::{
 
 fn main() {
     App::new()
-        .add_plugins(DefaultPlugins)
+        .add_plugins(DefaultPlugins.set( WindowPlugin {
+            primary_window : Some(Window {
+                title: String::from("FIRST BEVY APP"),
+                ime_position: Vec2::ZERO,
+                ..default()
+            }),
+                
+            ..default()
+        }))
         .add_systems(Startup, setup_scene)
         .add_systems(
             Update,
@@ -33,14 +41,14 @@ fn setup_scene(mut commands: Commands, asset_server: Res<AssetServer>) {
     commands.spawn(
         TextBundle::from_sections([
             TextSection {
-                value: "IME Enabled: ".to_string(),
+                value: String::from("한국어 지원"),
                 style: TextStyle {
                     font: font.clone_weak(),
                     ..default()
                 },
             },
             TextSection {
-                value: "false\n".to_string(),
+                value: String::from("\n"),
                 style: TextStyle {
                     font: font.clone_weak(),
                     font_size: 30.0,
@@ -55,7 +63,7 @@ fn setup_scene(mut commands: Commands, asset_server: Res<AssetServer>) {
                 },
             },
             TextSection {
-                value: "false\n".to_string(),
+                value: String::from("불가능\n"),
                 style: TextStyle {
                     font: font.clone_weak(),
                     font_size: 30.0,
@@ -93,7 +101,7 @@ fn setup_scene(mut commands: Commands, asset_server: Res<AssetServer>) {
             TextStyle {
                 font: asset_server.load("fonts/D2Coding.ttf"),
                 font_size: 100.0,
-                ..default()
+                color: Color::Srgba(Srgba::GREEN)
             },
         ),
         ..default()
@@ -110,9 +118,15 @@ fn toggle_ime(
 
         window.ime_position = window.cursor_position().unwrap();
         window.ime_enabled = !window.ime_enabled;
+        let msg = format!("{}", window.ime_position);
+        // let ime_state = if window.ime_enabled {
+        //     String::from("가능\n") 
+        // } else {
+        //     String::from("불가능\n")
+        // };
 
         let mut text = text.single_mut();
-        text.sections[1].value = format!("{}\n", window.ime_enabled);
+        text.sections[1].value = msg;
     }
 }
 
@@ -151,10 +165,10 @@ fn listen_ime_events(
                 edit_text.single_mut().sections[0].value.push_str(value);
             }
             Ime::Enabled { .. } => {
-                status_text.single_mut().sections[3].value = "true\n".to_string();
+                status_text.single_mut().sections[3].value = "가능\n".to_string();
             }
             Ime::Disabled { .. } => {
-                status_text.single_mut().sections[3].value = "false\n".to_string();
+                status_text.single_mut().sections[3].value = "불가능\n".to_string();
             }
             _ => (),
         }
