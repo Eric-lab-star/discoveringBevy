@@ -1,13 +1,12 @@
 // eric
-use std::{mem, time::Duration};
 
 use bevy::{
-    input::{
+    color::palettes::css::PURPLE, input::{
         keyboard::{Key, KeyboardInput},
         ButtonState,
-    },
-    prelude::*,
+    }, prelude::*, sprite::{MaterialMesh2dBundle, Mesh2dHandle}
 };
+
 
 fn main() {
     App::new()
@@ -23,164 +22,120 @@ fn main() {
         .add_systems(Startup, setup_scene)
         .add_systems(
             Update,
-            (
-                toggle_ime,
+            ( 
+                blinking_cursor ,
                 listen_ime_events,
+                ime_enable,
                 listen_keyboard_input_events,
-                bubbling_text,
             ),
         )
         .run();
 }
 
-fn setup_scene(mut commands: Commands, asset_server: Res<AssetServer>) {
+fn setup_scene(
+    mut commands: Commands,
+    mut meshes: ResMut<Assets<Mesh>>,
+    mut materials: ResMut<Assets<ColorMaterial>>,
+    asset_server: Res<AssetServer>
+) {
     commands.spawn(Camera2dBundle::default());
-
-    let font = asset_server.load("fonts/D2Coding.ttf");
-
-    commands.spawn(
-        TextBundle::from_sections([
-            TextSection {
-                value: String::from("한국어 지원"),
-                style: TextStyle {
-                    font: font.clone_weak(),
+    commands.spawn((
+        TextBundle {
+            text: Text::from_sections([
+                TextSection::new (
+                    String::new(), 
+                    TextStyle {
+                        font: asset_server.load("fonts/D2Coding.ttf"),
+                        font_size: 30.0,
+                        color: Color::BLACK,
+                    }
+                ),
+                TextSection::new(
+                    String::new(),
+                    TextStyle {
+                        font: asset_server.load("fonts/D2Coding.ttf"),
+                        font_size: 30.0,
+                        color: Color::BLACK,
+                    }
+                ),
+            ]),
+            background_color: BackgroundColor(Color::WHITE),
+            style: Style {
+                position_type: PositionType::Absolute,
+                bottom: Val::Px(30.),
+                margin: UiRect {
+                    left: Val::Percent(10.),
+                    right: Val::Percent(10.),
                     ..default()
                 },
+                ..default()
             },
-            TextSection {
-                value: String::from("\n"),
-                style: TextStyle {
-                    font: font.clone_weak(),
-                    font_size: 30.0,
-                    ..default()
-                },
-            },
-            TextSection {
-                value: "IME Active: ".to_string(),
-                style: TextStyle {
-                    font: font.clone_weak(),
-                    ..default()
-                },
-            },
-            TextSection {
-                value: String::from("불가능\n"),
-                style: TextStyle {
-                    font: font.clone_weak(),
-                    font_size: 30.0,
-                    ..default()
-                },
-            },
-            TextSection {
-                value: "click to toggle IME, press return to start a new line\n\n".to_string(),
-                style: TextStyle {
-                    font: font.clone_weak(),
-                    font_size: 18.0,
-                    ..default()
-                },
-            },
-            TextSection {
-                value: "".to_string(),
-                style: TextStyle {
-                    font,
-                    font_size: 25.0,
-                    ..default()
-                },
-            },
-        ])
-        .with_style(Style {
-            position_type: PositionType::Absolute,
-            top: Val::Px(10.0),
-            left: Val::Px(10.0),
             ..default()
-        }),
-    );
+        }, 
+    ));
 
-    commands.spawn(Text2dBundle {
-        text: Text::from_section(
-            "".to_string(),
-            TextStyle {
-                font: asset_server.load("fonts/D2Coding.ttf"),
-                font_size: 100.0,
-                color: Color::Srgba(Srgba::GREEN)
-            },
-        ),
+    commands.spawn(MaterialMesh2dBundle  {
+        mesh: meshes.add(Rectangle::new(10.0, 30.0)).into(),
+        material: materials.add(Color::from(PURPLE)),
+        transform: Transform::from_xyz(0.,0., 0.),
         ..default()
     });
 }
 
-fn toggle_ime(
-    input: Res<ButtonInput<MouseButton>>,
-    mut windows: Query<&mut Window>,
-    mut text: Query<&mut Text, With<Node>>,
+fn blinking_cursor (
+    mut cursor: Query<&mut Transform, With<Mesh2dHandle>>,
+    mut text_node: Query<(&mut Node, &mut GlobalTransform), With<Text>>,
 ) {
-    if input.just_pressed(MouseButton::Left) {
-        let mut window = windows.single_mut();
 
-        window.ime_position = window.cursor_position().unwrap();
-        window.ime_enabled = !window.ime_enabled;
-        let msg = format!("{}", window.ime_position);
-        // let ime_state = if window.ime_enabled {
-        //     String::from("가능\n") 
-        // } else {
-        //     String::from("불가능\n")
-        // };
+    let mut cursor = cursor.single_mut();
+    cursor.translation.x = -100.;
 
-        let mut text = text.single_mut();
-        text.sections[1].value = msg;
-    }
+    // let (node, gt) = text_node.single_mut();
+    // let Rect{min, max: _} =  node.logical_rect(&gt);
+    // println!("{:?}", min);
+    //
+    //  let cursor = cursor.single_mut().into_inner();
+    //  cursor.translation = Vec3 {x: min.x, y: min.y, z: 0.0}
+     
+     
+
 }
 
-#[derive(Component)]
-struct Bubble {
-    timer: Timer,
+fn ime_enable(
+    mut window: Query<&mut Window>,
+){
+    let mut window = window.single_mut();
+    window.ime_enabled = true;
 }
 
-fn bubbling_text(
-    mut commands: Commands,
-    mut bubbles: Query<(Entity, &mut Transform, &mut Bubble)>,
-    time: Res<Time>,
-) {
-    for (entity, mut transform, mut bubble) in bubbles.iter_mut() {
-        if bubble.timer.tick(time.delta()).just_finished() {
-            commands.entity(entity).despawn();
-        }
-        transform.translation.y += time.delta_seconds() * 100.0;
-    }
-}
-
-fn listen_ime_events(
+fn listen_ime_events (
     mut events: EventReader<Ime>,
-    mut status_text: Query<&mut Text, With<Node>>,
-    mut edit_text: Query<&mut Text, (Without<Node>, Without<Bubble>)>,
+    mut edit_text: Query<&mut Text, With<Node>>,
 ) {
     for event in events.read() {
         match event {
-            Ime::Preedit { value, cursor, .. } if !cursor.is_none() => {
-                status_text.single_mut().sections[5].value = format!("IME buffer: {value}");
-            }
-            Ime::Preedit { cursor, .. } if cursor.is_none() => {
-                status_text.single_mut().sections[5].value = "".to_string();
+            Ime::Preedit { value,  .. }  => {
+                edit_text.single_mut().sections[1].value = String::from(value);
             }
             Ime::Commit { value, .. } => {
                 edit_text.single_mut().sections[0].value.push_str(value);
             }
             Ime::Enabled { .. } => {
-                status_text.single_mut().sections[3].value = "가능\n".to_string();
+                println!("IME Active")
             }
             Ime::Disabled { .. } => {
-                status_text.single_mut().sections[3].value = "불가능\n".to_string();
+                println!("IME Inactive")
             }
-            _ => (),
         }
     }
 }
 
 fn listen_keyboard_input_events(
-    mut commands: Commands,
     mut events: EventReader<KeyboardInput>,
-    mut edit_text: Query<&mut Text, (Without<Node>, Without<Bubble>)>,
+    mut edit_text: Query<&mut Text, With<Node>>,
 ) {
     for event in events.read() {
+        
         // Only trigger changes when the key is first pressed.
         if event.state == ButtonState::Released {
             continue;
@@ -192,23 +147,16 @@ fn listen_keyboard_input_events(
                 if text.sections[0].value.is_empty() {
                     continue;
                 }
-                let old_value = mem::take(&mut text.sections[0].value);
-
-                commands.spawn((
-                    Text2dBundle {
-                        text: Text::from_section(old_value, text.sections[0].style.clone()),
-                        ..default()
-                    },
-                    Bubble {
-                        timer: Timer::from_seconds(5.0, TimerMode::Once),
-                    },
-                ));
-            }
-            Key::Space => {
-                edit_text.single_mut().sections[0].value.push(' ');
+                text.sections[0].value = String::new();
             }
             Key::Backspace => {
-                edit_text.single_mut().sections[0].value.pop();
+                let mut text = edit_text.single_mut();
+                if text.sections[1].value.is_empty() {
+                    text.sections[0].value.pop();
+                }
+            }
+            Key::Space => {
+                edit_text.single_mut().sections[0].value.push_str(" ");
             }
             Key::Character(character) => {
                 edit_text.single_mut().sections[0].value.push_str(character);
