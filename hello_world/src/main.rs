@@ -1,5 +1,5 @@
 // eric
-
+const KOREAN_FONT: &str = "fonts/korean/NotoSansKR-Regular.ttf";
 
 use bevy::{
     color::palettes::css::{BLACK, WHITE}, input::{
@@ -52,7 +52,7 @@ fn setup_scene(
                 TextSection::new (
                     String::new(), 
                     TextStyle {
-                        font: asset_server.load("fonts/D2Coding.ttf"),
+                        font: asset_server.load(KOREAN_FONT),
                         font_size: 30.0,
                         color: Color::BLACK,
                     }
@@ -61,7 +61,7 @@ fn setup_scene(
                 TextSection::new (
                     String::new(),
                     TextStyle {
-                        font: asset_server.load("fonts/D2Coding.ttf"),
+                        font: asset_server.load(KOREAN_FONT),
                         font_size: 30.0,
                         color: Color::BLACK,
                     }
@@ -80,7 +80,7 @@ fn setup_scene(
                 TextSection::new (
                     String::new(), 
                     TextStyle {
-                        font: asset_server.load("fonts/D2Coding.ttf"),
+                        font: asset_server.load(KOREAN_FONT),
                         font_size: 30.0,
                         color: Color::BLACK,
                     }
