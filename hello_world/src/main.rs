@@ -90,6 +90,7 @@ fn setup_scene(
             style: Style {
                 position_type: PositionType::Absolute,
                 width: Val::Percent(80.),
+                height: Val::Px(33.0),
                 bottom: Val::Px(10.),
                 margin: UiRect {
                     left: Val::Percent(10.),
@@ -120,7 +121,6 @@ fn blinking_cursor (
             }
         }
     }
-
 }
 
 fn ime_enable(
@@ -152,17 +152,20 @@ fn listen_ime_events (
     }
 }
 
+
+// text section 0: input before cursor 
+// text section 1: ime buffer
+// text section 2: cursor
+// text section 3: input after cursor
 fn listen_keyboard_input_events(
     mut events: EventReader<KeyboardInput>,
     mut edit_text: Query<&mut Text, With<Node>>,
 ) {
     for event in events.read() {
-        
         // Only trigger changes when the key is first pressed.
         if event.state == ButtonState::Released {
             continue;
         }
-
         match &event.logical_key {
             Key::Enter => {
                 let mut text = edit_text.single_mut();
@@ -171,6 +174,21 @@ fn listen_keyboard_input_events(
                 }
                 text.sections[0].value = String::new();
             }
+
+            Key::ArrowLeft => {
+                move_cursor(Direction::Left, &mut edit_text)
+                // let mut text_node = edit_text.single_mut();
+                // let left = &mut text_node.sections[0];
+                // let pop_char = left.value.pop().unwrap_or_default();
+                // let msg = &text_node.sections[3].value;
+                // let msg = format!("{pop_char}{msg}");
+                // text_node.sections[3].value = msg
+            }
+
+            Key::ArrowRight => {
+                move_cursor(Direction::Right, &mut edit_text)
+            }
+
             Key::Backspace => {
                 let mut text = edit_text.single_mut();
                 if text.sections[1].value.is_empty() {
@@ -186,4 +204,56 @@ fn listen_keyboard_input_events(
             _ => continue,
         }
     }
+}
+
+enum Direction {
+    Left,
+    Right,
+}
+
+fn move_cursor (
+    direction: Direction,
+    edit_text: &mut Query<&mut Text, With<Node>>,
+) {
+
+    let mut text_node = edit_text.single_mut();
+
+    let (pop_from, insert_to) = match direction {
+        Direction::Left => (0, 3),
+        Direction::Right => (3, 0),
+    };
+
+    let src_text = &mut text_node.sections[pop_from];
+    let pop_char = if pop_from == 0 {
+        match src_text.value.pop() {
+            Some(ch) => {
+                String::from(ch)
+            }
+            None => {
+                String::new()
+            }
+        }
+
+    } else {
+        let mut iter = src_text.value.chars();
+        let first_char = iter.next();
+        match first_char {
+            Some(ch) => {
+                src_text.value = src_text.value[ch.len_utf8()..].to_string();
+                String::from(ch)
+            }
+            None => {
+                String::new()
+            }
+
+        }
+    };
+    let msg = &text_node.sections[insert_to].value;
+    let msg = if pop_from == 0 {
+        format!("{pop_char}{msg}")
+    } else {
+        format!("{msg}{pop_char}")
+    };
+    text_node.sections[insert_to].value = msg;
+
 }
