@@ -1,11 +1,17 @@
 // eric
 
+
 use bevy::{
-    color::palettes::css::PURPLE, input::{
+    color::palettes::css::{BLACK, WHITE}, input::{
         keyboard::{Key, KeyboardInput},
         ButtonState,
-    }, prelude::*, sprite::{MaterialMesh2dBundle, Mesh2dHandle}
+    }, prelude::*
 };
+
+#[derive(Component)]
+struct BlinKTimer {
+    timer: Timer,
+}
 
 
 fn main() {
@@ -34,11 +40,12 @@ fn main() {
 
 fn setup_scene(
     mut commands: Commands,
-    mut meshes: ResMut<Assets<Mesh>>,
-    mut materials: ResMut<Assets<ColorMaterial>>,
     asset_server: Res<AssetServer>
 ) {
     commands.spawn(Camera2dBundle::default());
+    commands.spawn(BlinKTimer {
+        timer: Timer::from_seconds(0.4, TimerMode::Repeating),
+    });
     commands.spawn((
         TextBundle {
             text: Text::from_sections([
@@ -50,7 +57,8 @@ fn setup_scene(
                         color: Color::BLACK,
                     }
                 ),
-                TextSection::new(
+
+                TextSection::new (
                     String::new(),
                     TextStyle {
                         font: asset_server.load("fonts/D2Coding.ttf"),
@@ -58,11 +66,31 @@ fn setup_scene(
                         color: Color::BLACK,
                     }
                 ),
+
+                // 2 Text input cursor
+                TextSection::new (
+                    String::from("|"),
+                    TextStyle {
+                        font: asset_server.load("fonts/Inter-Regular.ttf"),
+                        font_size: 30.0,
+                        color: Color::BLACK,
+                    }
+                ),
+
+                TextSection::new (
+                    String::new(), 
+                    TextStyle {
+                        font: asset_server.load("fonts/D2Coding.ttf"),
+                        font_size: 30.0,
+                        color: Color::BLACK,
+                    }
+                )
             ]),
             background_color: BackgroundColor(Color::WHITE),
             style: Style {
                 position_type: PositionType::Absolute,
-                bottom: Val::Px(30.),
+                width: Val::Percent(80.),
+                bottom: Val::Px(10.),
                 margin: UiRect {
                     left: Val::Percent(10.),
                     right: Val::Percent(10.),
@@ -73,31 +101,25 @@ fn setup_scene(
             ..default()
         }, 
     ));
-
-    commands.spawn(MaterialMesh2dBundle  {
-        mesh: meshes.add(Rectangle::new(10.0, 30.0)).into(),
-        material: materials.add(Color::from(PURPLE)),
-        transform: Transform::from_xyz(0.,0., 0.),
-        ..default()
-    });
 }
 
 fn blinking_cursor (
-    mut cursor: Query<&mut Transform, With<Mesh2dHandle>>,
-    mut text_node: Query<(&mut Node, &mut GlobalTransform), With<Text>>,
+    mut text_cursor: Query<&mut Text, With<Node>>,
+    time: Res<Time>,
+    mut timer: Query<&mut BlinKTimer>,
 ) {
-
-    let mut cursor = cursor.single_mut();
-    cursor.translation.x = -100.;
-
-    // let (node, gt) = text_node.single_mut();
-    // let Rect{min, max: _} =  node.logical_rect(&gt);
-    // println!("{:?}", min);
-    //
-    //  let cursor = cursor.single_mut().into_inner();
-    //  cursor.translation = Vec3 {x: min.x, y: min.y, z: 0.0}
-     
-     
+    let text_cursor_style = &mut text_cursor.single_mut().sections[2].style;
+    let mut timer = timer.single_mut();
+    if timer.timer.tick(time.delta()).just_finished() {
+        match text_cursor_style.color {
+            Color::Srgba(BLACK) => {
+                text_cursor_style.color = Color::Srgba(WHITE);
+            }
+            _ => {
+                text_cursor_style.color = Color::Srgba(BLACK);
+            }
+        }
+    }
 
 }
 
