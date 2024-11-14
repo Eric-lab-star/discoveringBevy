@@ -1,10 +1,8 @@
-[package]
-name = "bevy_game"
-version = "0.1.0"
-edition = "2021"
-
-[dependencies]
-bevy = { version = "0.14.2", features = ["dynamic_linking"] }
+[workspace]
+resolver = "2"
+members = [ "game",
+	"sandbox",
+]
 
 # Enable a small amount of optimization in the dev profile.
 [profile.dev]
@@ -32,5 +30,3 @@ inherits = "release"
 opt-level = "s"
 # Strip all debugging information from the binary to slightly reduce file size.
 strip = "debuginfo"
-
-
