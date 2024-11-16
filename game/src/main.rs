@@ -33,12 +33,11 @@ fn ui_example_system(
             let response = ui.text_edit_singleline(&mut uistate.input);
             response.request_focus();
             if response.lost_focus() && ui.input(|i| i.key_pressed(Key::Enter)) {
-                uistate.output = uistate.input.clone();
+                uistate.output = uistate.input;
                 uistate.input.clear();
                 response.request_focus();
             }
             ui.label(&uistate.output);
         });
-
 
 }
