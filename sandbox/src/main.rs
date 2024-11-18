@@ -1,6 +1,6 @@
+// sand box
 use core::f32;
 use std::sync::{Arc, Mutex};
-// sandbox
 use bevy::prelude::*;
 use bevy_egui::egui::FontId;
 use bevy_egui::{ EguiContexts, EguiPlugin};
@@ -57,7 +57,11 @@ fn ui_example_system(
             ui.label(job);
             let mut layouter = |ui: &Ui, string: &str, wrap_width: f32| {
                 println!("{}", wrap_width);
-                let mut input_layout_job = LayoutJob::simple_singleline(String::from(string), FontId::proportional(20.0), Color32::WHITE);
+                let mut input_layout_job = LayoutJob::simple_singleline(
+                    String::from(string),
+                    FontId::proportional(20.0),
+                    Color32::WHITE
+                );
                 input_layout_job.wrap.max_width = wrap_width;
                 ui.fonts(|f| f.layout_job(input_layout_job))
             };
