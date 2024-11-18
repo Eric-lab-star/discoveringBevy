@@ -1,3 +1,5 @@
+use std::sync::{Arc, Mutex};
+
 use bevy::prelude::*;
 use bevy_egui::{ EguiContexts, EguiPlugin};
 use bevy_egui::egui::{
@@ -7,8 +9,8 @@ use bevy_egui::egui::{
 
 #[derive(Default, Resource)]
 struct UIState {
-    input: String,
-    output: String,
+    input: Arc<Mutex<String>>,
+    output: Arc<Mutex<String>>,
 }
 
 fn main() {
@@ -22,7 +24,8 @@ fn main() {
 
 fn ui_example_system(
     mut uistate: ResMut<UIState>,
-    mut contexts: EguiContexts
+    mut contexts: EguiContexts,
+    mut user_input: Local<String>
 ) {
     let ctx = contexts.ctx_mut();
     TopBottomPanel::bottom("bottom")
@@ -30,14 +33,19 @@ fn ui_example_system(
         .resizable(false)
         .show(ctx, |ui| {
             ui.label("Score");
-            let response = ui.text_edit_singleline(&mut uistate.input);
-            response.request_focus();
+
+            let response = ui.text_edit_singleline(&mut *user_input);
+            if response.changed() {
+                uistate.input = Arc::new(Mutex::new(String::new()));
+                uistate.input.lock().unwrap().push_str(&*user_input);
+            }
+
             if response.lost_focus() && ui.input(|i| i.key_pressed(Key::Enter)) {
-                uistate.output = uistate.input;
-                uistate.input.clear();
+                uistate.output = Arc::clone(&uistate.input);   
+                *user_input = String::new(); // 17/11/2024
                 response.request_focus();
             }
-            ui.label(&uistate.output);
+            ui.label(&*uistate.output.lock().unwrap());
         });
 
 }
