@@ -57,10 +57,8 @@ fn ui_example_system(
             ui.label(job);
             let mut layouter = |ui: &Ui, string: &str, wrap_width: f32| {
                 println!("{}", wrap_width);
-                let mut input_layout_job = LayoutJob::simple_singleline(String::new(), FontId::proportional(20.0), Color32::WHITE);
-                input_layout_job.text.push_str(string); 
+                let mut input_layout_job = LayoutJob::simple_singleline(String::from(string), FontId::proportional(20.0), Color32::WHITE);
                 input_layout_job.wrap.max_width = wrap_width;
-                ui.label(string);
                 ui.fonts(|f| f.layout_job(input_layout_job))
             };
 
