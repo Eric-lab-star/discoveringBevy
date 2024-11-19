@@ -1,11 +1,12 @@
 use core::f32;
 use std::sync::{Arc, Mutex};
 use bevy::prelude::*;
-use bevy_egui::egui::FontId;
+use bevy_egui::egui::{FontData, FontId, RawInput};
 use bevy_egui::{ EguiContexts, EguiPlugin};
 use bevy_egui::egui::{
     Align, Key, RichText, TextEdit, TopBottomPanel, Vec2,
-    text::LayoutJob, TextFormat, Color32, Ui,
+    text::LayoutJob, TextFormat, Color32, Ui, FontDefinitions,
+    FontFamily, text::Fonts,
 };
 
 #[derive(Default, Resource)]
@@ -18,8 +19,39 @@ fn main() {
         .init_resource::<UIState>()
         .add_plugins(DefaultPlugins)
         .add_plugins(EguiPlugin)
+        .add_systems(Startup, setup)
+        .add_systems(PreUpdate, pass)
         .add_systems(Update, ui_example_system)
+        .add_systems(PostUpdate, delta)
         .run();
+}
+
+
+
+fn setup(
+    mut contexts: EguiContexts,
+) {
+    let ctx = contexts.ctx_mut();
+    let mut fonts = FontDefinitions::default();
+    fonts.font_data.insert(
+        "korean".to_owned(),
+        FontData::from_static(include_bytes!("../assets/fonts/korean/NotoSansKR-Bold.ttf")));
+
+    fonts.families.get_mut(&FontFamily::Proportional).unwrap()
+        .insert(0, "korean".to_owned());
+    ctx.set_fonts(fonts);
+}
+
+fn pass(
+    mut context: EguiContexts,
+) {
+    let _ctx = context.ctx_mut();
+}
+
+fn delta (
+    mut context: EguiContexts,
+) {
+    let _ctx = context.ctx_mut();
 }
 
 fn ui_example_system(
@@ -28,16 +60,24 @@ fn ui_example_system(
     mut user_input: Local<String>
 ) {
     let ctx = contexts.ctx_mut();
+
+
+
     TopBottomPanel::bottom("bottom")
         .min_height(100.0)
         .resizable(false)
         .show(ctx, |ui| {
+            ui.label("안녕하세요");
+
             let mut job = LayoutJob::default();
             job.append(
-                "Hello",
+                "안녕하세요",
                 0.0,
                 TextFormat {
-                    font_id: FontId::proportional(20.0),
+                    font_id: FontId {
+                        size: 20.0,
+                        family: FontFamily::Proportional,
+                    },
                     color: Color32::WHITE,
                     ..Default::default()
                 }
@@ -55,7 +95,6 @@ fn ui_example_system(
 
             ui.label(job);
             let mut layouter = |ui: &Ui, string: &str, wrap_width: f32| {
-                println!("{}", wrap_width);
                 let mut input_layout_job = LayoutJob::simple_singleline(
                     String::from(string),
                     FontId::proportional(20.0),
