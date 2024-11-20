@@ -5,7 +5,7 @@ use bevy::prelude::*;
 use bevy::window::PrimaryWindow;
 use bevy_egui::{ EguiContexts, EguiPlugin};
 use bevy_egui::egui::{
-    Align, RichText, TextEdit, TopBottomPanel, Vec2,
+    Align, RichText, TextEdit, TopBottomPanel, Vec2 as E_Vec2,
     text::LayoutJob, TextFormat, Color32, Ui, FontDefinitions,
     FontFamily, Key, FontData, FontId
 };
@@ -31,6 +31,7 @@ fn main() {
         .add_plugins(EguiPlugin)
         .add_systems(Startup, setup)
         .add_systems(Update, ui_example_system)
+        .add_systems(Update, listen_ime_event)
         .run();
 }
 
@@ -46,6 +47,24 @@ fn setup(
     fonts.families.get_mut(&FontFamily::Proportional).unwrap()
         .insert(0, "korean".to_owned());
     ctx.set_fonts(fonts);
+}
+
+fn listen_ime_event (
+    mut events: EventReader<Ime>,
+) {
+    for event in events.read() {
+        match event {
+            Ime::Preedit { value, .. } => {
+                info!("IME Preedit {}", value);
+            }
+            Ime::Enabled { .. } => {
+                info!("IME Enabled");
+
+            }
+            Ime::Disabled { .. } => { info!("IME Disabled") }
+            Ime::Commit { value, ..} => { info!("IME Commit {}", value) }
+        }
+    }
 }
 
 
@@ -98,15 +117,35 @@ fn ui_example_system(
                 .hint_text(RichText::new("Press Enter to Submit Your Answer").size(20.0))
                 .layouter(&mut layouter)
                 .frame(true)
-                .min_size(Vec2{x: 100.0, y: 40.0})
+                .min_size(E_Vec2{x: 100.0, y: 40.0})
                 .desired_width(f32::INFINITY)
                 .vertical_align(Align::Center);
 
             let response = ui.add(textedit);
 
+            let mut window = primary_window.single_mut();
+
             if response.has_focus() {
-                let mut window = primary_window.single_mut();
                 window.ime_enabled = true;
+            }
+
+            if response.has_focus() && ui.input(|i| i.key_pressed(Key::Backspace)) && window.ime_enabled == true {
+                println!("Backspace");
+                let text_edit_state = TextEdit::load_state(&ctx, response.id);
+                match text_edit_state {
+                    Some(state) => {
+                        match state.cursor.char_range() {
+                            Some(mut r) => {
+                                println!("{}, {}", r.primary.index, r.secondary.index);
+                                r.primary.index += 1;
+                                r.secondary.index += 1;
+                                TextEdit::store_state(&ctx, response.id, state)
+                            },
+                            None => {println!("error");}
+                        }
+                    },
+                    None =>{println!("error");}
+                }
             }
 
             if response.lost_focus() && ui.input(|i| i.key_pressed(Key::Enter)) {
