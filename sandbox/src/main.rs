@@ -3,12 +3,11 @@ use core::f32;
 use std::sync::{Arc, Mutex};
 use bevy::prelude::*;
 use bevy::window::PrimaryWindow;
-use bevy_egui::egui::{FontData, FontId};
 use bevy_egui::{ EguiContexts, EguiPlugin};
 use bevy_egui::egui::{
     Align, RichText, TextEdit, TopBottomPanel, Vec2,
     text::LayoutJob, TextFormat, Color32, Ui, FontDefinitions,
-    FontFamily, Key
+    FontFamily, Key, FontData, FontId
 };
 
 #[derive(Default, Resource)]
@@ -20,11 +19,18 @@ struct UIState {
 fn main() {
     App::new()
         .init_resource::<UIState>()
-        .add_plugins(DefaultPlugins)
+        .add_plugins(
+            DefaultPlugins.set(WindowPlugin {
+                primary_window: Some(Window {
+                    title: String::from("Tower Defence"),
+                    ..default()
+                }),
+                ..default()
+            })
+        )
         .add_plugins(EguiPlugin)
         .add_systems(Startup, setup)
         .add_systems(Update, ui_example_system)
-        .add_systems(Update, ime_toggle)
         .run();
 }
 
@@ -42,19 +48,11 @@ fn setup(
     ctx.set_fonts(fonts);
 }
 
-fn ime_toggle(
-    mut q_window: Query<&mut Window, With<PrimaryWindow>>,
-) {
-    let mut window = q_window.single_mut();
-    window.ime_enabled =  true;
-}
-
-
-
 
 fn ui_example_system(
     mut uistate: ResMut<UIState>,
     mut contexts: EguiContexts,
+    mut primary_window: Query<&mut Window, With<PrimaryWindow>>,
 ) {
     let ctx = contexts.ctx_mut();
     TopBottomPanel::bottom("bottom")
@@ -105,6 +103,11 @@ fn ui_example_system(
                 .vertical_align(Align::Center);
 
             let response = ui.add(textedit);
+
+            if response.has_focus() {
+                let mut window = primary_window.single_mut();
+                window.ime_enabled = true;
+            }
 
             if response.lost_focus() && ui.input(|i| i.key_pressed(Key::Enter)) {
                 uistate.output = Arc::new(Mutex::new(String::new()));
