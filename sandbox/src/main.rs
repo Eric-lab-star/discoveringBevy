@@ -1,4 +1,3 @@
-// sand box
 use core::f32;
 use std::sync::{Arc, Mutex};
 
@@ -20,15 +19,16 @@ struct UIState {
     text_edit: String,
 }
 
-
-#[derive(Component)]
-struct ImeState {
-    text: String,
+#[derive(Resource, Default)]
+struct ImeValue {
+    trig_backspace: bool,
 }
+
 
 fn main() {
     App::new()
         .init_resource::<UIState>()
+        .init_resource::<ImeValue>()
         .add_plugins(
             DefaultPlugins.set(WindowPlugin {
                 primary_window: Some(Window {
@@ -42,12 +42,12 @@ fn main() {
         .add_systems(Startup, setup)
         .add_systems(Update, listen_ime_event)
         .add_systems(Update, text_editor_ui)
+        .add_systems(Update, trigger_ime_event)
         .run();
 }
 
 fn setup(
     mut contexts: EguiContexts,
-    mut cmds: Commands,
 ) {
     let ctx = contexts.ctx_mut();
     let mut fonts = FontDefinitions::default();
@@ -58,28 +58,48 @@ fn setup(
     fonts.families.get_mut(&FontFamily::Proportional).unwrap()
         .insert(0, "korean".to_owned());
     ctx.set_fonts(fonts);
+}
 
-
-    cmds.spawn(ImeState{text: String::new()});
+fn trigger_ime_event(
+    mut ime_event_wr: EventWriter<Ime>,
+    keyboard: Res<ButtonInput<KeyCode>>,
+    win_entity: Query<Entity, With<PrimaryWindow>>,
+    pri_window: Query<&Window, With<PrimaryWindow>>,
+    mut ime_value: ResMut<ImeValue>,
+    mut ui_state: ResMut<UIState>
+) {
+    let pri_window = pri_window.single();
+    if pri_window.ime_enabled {
+        let window = win_entity.single();
+        if keyboard.just_pressed(KeyCode::Backspace) && ime_value.trig_backspace {
+            ime_event_wr.send(Ime::Commit{value: String::from(""), window: window});
+            ui_state.text_edit.pop();
+            ime_value.trig_backspace = false;
+            
+        };
+    }
+    
 }
 
 fn listen_ime_event (
     mut events: EventReader<Ime>,
+    mut ime_value: ResMut<ImeValue>
 ) {
+    
     for event in events.read() {
         match event {
             Ime::Preedit { value, .. } => {
                 if value.is_empty() {
-
+                    ime_value.trig_backspace = true;
                 }
                 info!("IME Preedit {}", value);
             }
+            Ime::Commit { value, ..} => { 
+                info!("IME Commit {}", value) }
             Ime::Enabled { .. } => {
                 info!("IME Enabled");
-
             }
             Ime::Disabled { .. } => { info!("IME Disabled") }
-            Ime::Commit { value, ..} => { info!("IME Commit {}", value) }
         }
     }
 }
@@ -91,27 +111,7 @@ fn text_editor_ui (
     mut uistate: ResMut<UIState>,
     mut contexts: EguiContexts,
     mut primary_window: Query<&mut Window, With<PrimaryWindow>>,
-    primary_window_entity: Query<Entity, With<PrimaryWindow>>,
 ) {
-
-    let win_entity = primary_window_entity.single();
-    let mut window = primary_window.single_mut();
-    let mut ime_event = Events::<Ime>::default();
-    let mut reader = ime_event.get_reader();
-
-    ime_event.update();
-    ime_event.send(Ime::Commit{value: String::from("my ime"), window: win_entity });
-
-    for event in reader.read(&ime_event) {
-        match event {
-            Ime::Commit { value, ..} => {
-                info!("manual Commit {}", value);
-            }
-            _ => {}
-        }
-    }
-
-
     let ctx = contexts.ctx_mut();
     TopBottomPanel::bottom("bottom")
         .min_height(100.0)
@@ -136,17 +136,13 @@ fn text_editor_ui (
                 .vertical_align(Align::Center);
 
             let response = ui.add(textedit);
+            let mut window = primary_window.single_mut();
 
-
-            info!("IME Enabled: {:?}", window.ime_enabled);
             if response.has_focus() {
-                if ui.input(|i|i.key_pressed(Key::Backspace)) {
-                    window.ime_enabled = false;
-                } else {
-                    window.ime_enabled = true;
-                }
+                window.ime_enabled = true;
+            } else {
+                window.ime_enabled = false;
             }
-
 
             // print input to output area
             if response.lost_focus() && ui.input(|i| i.key_pressed(Key::Enter)) {
