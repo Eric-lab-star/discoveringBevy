@@ -1,12 +1,16 @@
 // sand box
 use core::f32;
 use std::sync::{Arc, Mutex};
+
+// bevy
 use bevy::prelude::*;
 use bevy::window::PrimaryWindow;
+
+/// egui
 use bevy_egui::{ EguiContexts, EguiPlugin};
 use bevy_egui::egui::{
     Align, RichText, TextEdit, TopBottomPanel, Vec2 as E_Vec2,
-    text::LayoutJob, TextFormat, Color32, Ui, FontDefinitions,
+    text::LayoutJob, Color32, Ui, FontDefinitions,
     FontFamily, Key, FontData, FontId
 };
 
@@ -14,6 +18,12 @@ use bevy_egui::egui::{
 struct UIState {
     output: Arc<Mutex<String>>,
     text_edit: String,
+}
+
+
+#[derive(Component)]
+struct ImeState {
+    text: String,
 }
 
 fn main() {
@@ -30,13 +40,14 @@ fn main() {
         )
         .add_plugins(EguiPlugin)
         .add_systems(Startup, setup)
-        .add_systems(Update, ui_example_system)
         .add_systems(Update, listen_ime_event)
+        .add_systems(Update, text_editor_ui)
         .run();
 }
 
 fn setup(
     mut contexts: EguiContexts,
+    mut cmds: Commands,
 ) {
     let ctx = contexts.ctx_mut();
     let mut fonts = FontDefinitions::default();
@@ -47,6 +58,9 @@ fn setup(
     fonts.families.get_mut(&FontFamily::Proportional).unwrap()
         .insert(0, "korean".to_owned());
     ctx.set_fonts(fonts);
+
+
+    cmds.spawn(ImeState{text: String::new()});
 }
 
 fn listen_ime_event (
@@ -55,6 +69,9 @@ fn listen_ime_event (
     for event in events.read() {
         match event {
             Ime::Preedit { value, .. } => {
+                if value.is_empty() {
+
+                }
                 info!("IME Preedit {}", value);
             }
             Ime::Enabled { .. } => {
@@ -68,41 +85,38 @@ fn listen_ime_event (
 }
 
 
-fn ui_example_system(
+
+
+fn text_editor_ui (
     mut uistate: ResMut<UIState>,
     mut contexts: EguiContexts,
     mut primary_window: Query<&mut Window, With<PrimaryWindow>>,
+    primary_window_entity: Query<Entity, With<PrimaryWindow>>,
 ) {
+
+    let win_entity = primary_window_entity.single();
+    let mut window = primary_window.single_mut();
+    let mut ime_event = Events::<Ime>::default();
+    let mut reader = ime_event.get_reader();
+
+    ime_event.update();
+    ime_event.send(Ime::Commit{value: String::from("my ime"), window: win_entity });
+
+    for event in reader.read(&ime_event) {
+        match event {
+            Ime::Commit { value, ..} => {
+                info!("manual Commit {}", value);
+            }
+            _ => {}
+        }
+    }
+
+
     let ctx = contexts.ctx_mut();
     TopBottomPanel::bottom("bottom")
         .min_height(100.0)
         .resizable(false)
         .show(ctx, |ui| {
-            ui.label("안녕하세요");
-            let mut job = LayoutJob::default();
-            job.append(
-                "안녕하세요",
-                0.0,
-                TextFormat {
-                    font_id: FontId {
-                        size: 20.0,
-                        family: FontFamily::Proportional,
-                    },
-                    color: Color32::WHITE,
-                    ..Default::default()
-                }
-            );
-            job.append(
-                "Human",
-                20.0,
-                TextFormat {
-                    font_id: FontId::monospace(20.0),
-                    color: Color32::RED,
-                    ..Default::default()
-                }
-            );
-            ui.label(job);
-
             let mut layouter = |ui: &Ui, string: &str, wrap_width: f32| {
                 let mut input_layout_job = LayoutJob::simple_singleline(
                     String::from(string),
@@ -123,31 +137,18 @@ fn ui_example_system(
 
             let response = ui.add(textedit);
 
-            let mut window = primary_window.single_mut();
 
+            info!("IME Enabled: {:?}", window.ime_enabled);
             if response.has_focus() {
-                window.ime_enabled = true;
-            }
-
-            if response.has_focus() && ui.input(|i| i.key_pressed(Key::Backspace)) && window.ime_enabled == true {
-                println!("Backspace");
-                let text_edit_state = TextEdit::load_state(&ctx, response.id);
-                match text_edit_state {
-                    Some(state) => {
-                        match state.cursor.char_range() {
-                            Some(mut r) => {
-                                println!("{}, {}", r.primary.index, r.secondary.index);
-                                r.primary.index += 1;
-                                r.secondary.index += 1;
-                                TextEdit::store_state(&ctx, response.id, state)
-                            },
-                            None => {println!("error");}
-                        }
-                    },
-                    None =>{println!("error");}
+                if ui.input(|i|i.key_pressed(Key::Backspace)) {
+                    window.ime_enabled = false;
+                } else {
+                    window.ime_enabled = true;
                 }
             }
 
+
+            // print input to output area
             if response.lost_focus() && ui.input(|i| i.key_pressed(Key::Enter)) {
                 uistate.output = Arc::new(Mutex::new(String::new()));
                 match uistate.output.lock() {
