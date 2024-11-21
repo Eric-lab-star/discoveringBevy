@@ -24,11 +24,40 @@ struct ImeValue {
     trig_backspace: bool,
 }
 
+#[derive( Resource)]
+struct EditorLayoutJob {
+    layout_job: LayoutJob,
+}
+
+impl Default for EditorLayoutJob {
+    fn default() -> Self {
+        let layout_job = LayoutJob::simple_singleline(
+            String::new(),
+            FontId::proportional(20.0),
+            Color32::WHITE
+        );
+        Self {
+            layout_job
+        }
+    }
+}
+
+impl EditorLayoutJob {
+    fn layoutJob(&self, string: &str) -> LayoutJob {
+        self.layout_job
+    }
+}
+
+
+
+
+
 
 fn main() {
     App::new()
         .init_resource::<UIState>()
         .init_resource::<ImeValue>()
+        .init_resource::<EditorLayoutJob>()
         .add_plugins(
             DefaultPlugins.set(WindowPlugin {
                 primary_window: Some(Window {
@@ -70,67 +99,60 @@ fn trigger_ime_event(
 ) {
     let pri_window = pri_window.single();
     if pri_window.ime_enabled {
-        let window = win_entity.single();
-        if keyboard.just_pressed(KeyCode::Backspace) && ime_value.trig_backspace {
-            ime_event_wr.send(Ime::Commit{value: String::from(""), window: window});
+        if keyboard.just_pressed(KeyCode::Backspace)
+            && ime_value.trig_backspace {
+            ime_event_wr.send(
+                Ime::Commit{
+                    value: String::from(""),
+                    window: win_entity.single(), 
+                }
+            );
             ui_state.text_edit.pop();
             ime_value.trig_backspace = false;
-            
         };
     }
-    
 }
 
 fn listen_ime_event (
     mut events: EventReader<Ime>,
     mut ime_value: ResMut<ImeValue>
 ) {
-    
     for event in events.read() {
         match event {
             Ime::Preedit { value, .. } => {
                 if value.is_empty() {
                     ime_value.trig_backspace = true;
                 }
-                info!("IME Preedit {}", value);
             }
-            Ime::Commit { value, ..} => { 
-                info!("IME Commit {}", value) }
-            Ime::Enabled { .. } => {
-                info!("IME Enabled");
-            }
-            Ime::Disabled { .. } => { info!("IME Disabled") }
+            _=> {}
         }
     }
 }
-
-
 
 
 fn text_editor_ui (
     mut uistate: ResMut<UIState>,
     mut contexts: EguiContexts,
     mut primary_window: Query<&mut Window, With<PrimaryWindow>>,
+    mut editor_layout_job: ResMut<EditorLayoutJob>
+
 ) {
     let ctx = contexts.ctx_mut();
+
     TopBottomPanel::bottom("bottom")
         .min_height(100.0)
         .resizable(false)
         .show(ctx, |ui| {
             let mut layouter = |ui: &Ui, string: &str, wrap_width: f32| {
-                let mut input_layout_job = LayoutJob::simple_singleline(
-                    String::from(string),
-                    FontId::proportional(20.0),
-                    Color32::WHITE
-                );
-                input_layout_job.wrap.max_width = wrap_width;
-                ui.fonts(|f| f.layout_job(input_layout_job))
+                editor_layout_job.layout_job.text= String::from(string);
+                editor_layout_job.layout_job.wrap.max_width = wrap_width;
+                ui.fonts(|f| f.layout_job(editor_layout_job.layout_job))
             };
 
             let textedit = TextEdit::singleline(&mut uistate.text_edit)
                 .hint_text(RichText::new("Press Enter to Submit Your Answer").size(20.0))
                 .layouter(&mut layouter)
-                .frame(true)
+                .frame(false)
                 .min_size(E_Vec2{x: 100.0, y: 40.0})
                 .desired_width(f32::INFINITY)
                 .vertical_align(Align::Center);
