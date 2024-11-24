@@ -1,4 +1,5 @@
 use core::f32;
+use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 
 // bevy
@@ -26,7 +27,8 @@ struct ImeValue {
 
 #[derive( Resource)]
 struct EditorLayoutJob {
-    layout_job: LayoutJob,
+    layout_job: Arc<Mutex<LayoutJob>>,
+    layout_cache: HashMap<String, Arc<Mutex<LayoutJob>>>
 }
 
 impl Default for EditorLayoutJob {
@@ -36,22 +38,29 @@ impl Default for EditorLayoutJob {
             FontId::proportional(20.0),
             Color32::WHITE
         );
+
         Self {
-            layout_job
+            layout_cache: HashMap::new(),
+            layout_job: Arc::new(Mutex::new(layout_job))
         }
     }
 }
 
 impl EditorLayoutJob {
-    fn layoutJob(&self, string: &str) -> LayoutJob {
-        self.layout_job
+    fn layoutJob(&self, text: &str) -> Arc<Mutex<LayoutJob>> {
+        match self.layout_cache.get(text) {
+            Some(&key) => {
+                return key
+            }
+            None => {
+                let mut new_layout = LayoutJob::default();
+                new_layout.text = text.to_string();
+                self.layout_cache.insert(text.to_string(), new_layout);
+                new_layout
+            }
+        }
     }
 }
-
-
-
-
-
 
 fn main() {
     App::new()
