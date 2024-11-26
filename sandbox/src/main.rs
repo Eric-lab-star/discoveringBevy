@@ -27,20 +27,43 @@ struct ImeValue {
 
 #[derive( Resource)]
 struct EditorLayoutJob {
-    cache: HashMap<String, LayoutJob>
+    cache: Arc<Mutex<HashMap<String, LayoutJob>>>
 }
 
 impl Default for EditorLayoutJob {
     fn default() -> Self {
         Self {
-            cache: HashMap::new(),
+            cache: Arc::new(Mutex::new(HashMap::new()))
         }
     }
 }
 
 impl EditorLayoutJob {
-    fn layoutJob(&mut self, text: &str) -> LayoutJob {
-        
+    fn get(&self, key: &str, wrap_width: f32) -> LayoutJob {
+        let cache = Arc::clone(&self.cache);
+        let mut hashmap = cache.lock().unwrap();
+        let layoutjob = hashmap.get(key);
+        match layoutjob {
+            Some(value) => {
+                value.clone()
+            }
+            None => {
+                let mut new_job = LayoutJob::simple_singleline(
+                    key.to_string(),
+                    FontId::proportional(20.0),
+                    Color32::WHITE
+                );
+
+                new_job.wrap.max_width = wrap_width; 
+
+                let clone = new_job.clone();
+                if hashmap.len() > 100 {
+                    hashmap.clear();
+                }
+                hashmap.insert(key.to_string(), new_job);
+                clone
+            }
+        }
     }
 }
 
@@ -125,7 +148,7 @@ fn text_editor_ui (
     mut uistate: ResMut<UIState>,
     mut contexts: EguiContexts,
     mut primary_window: Query<&mut Window, With<PrimaryWindow>>,
-    mut editor_layout_job: ResMut<EditorLayoutJob>
+    editor_layout_job: Res<EditorLayoutJob>
 
 ) {
     let ctx = contexts.ctx_mut();
@@ -135,8 +158,8 @@ fn text_editor_ui (
         .resizable(false)
         .show(ctx, |ui| {
             let mut layouter = |ui: &Ui, string: &str, wrap_width: f32| {
-                let layout = *editor_layout_job.layoutJob(string);
-                ui.fonts(|f| f.layout_job(layout))
+                let job = editor_layout_job.get(string, wrap_width);
+                ui.fonts(|f| f.layout_job(job))
             };
 
             let textedit = TextEdit::singleline(&mut uistate.text_edit)
