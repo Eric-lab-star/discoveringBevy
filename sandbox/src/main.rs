@@ -27,38 +27,20 @@ struct ImeValue {
 
 #[derive( Resource)]
 struct EditorLayoutJob {
-    layout_job: Arc<Mutex<LayoutJob>>,
-    layout_cache: HashMap<String, Arc<Mutex<LayoutJob>>>
+    cache: HashMap<String, LayoutJob>
 }
 
 impl Default for EditorLayoutJob {
     fn default() -> Self {
-        let layout_job = LayoutJob::simple_singleline(
-            String::new(),
-            FontId::proportional(20.0),
-            Color32::WHITE
-        );
-
         Self {
-            layout_cache: HashMap::new(),
-            layout_job: Arc::new(Mutex::new(layout_job))
+            cache: HashMap::new(),
         }
     }
 }
 
 impl EditorLayoutJob {
-    fn layoutJob(&self, text: &str) -> Arc<Mutex<LayoutJob>> {
-        match self.layout_cache.get(text) {
-            Some(&key) => {
-                return key
-            }
-            None => {
-                let mut new_layout = LayoutJob::default();
-                new_layout.text = text.to_string();
-                self.layout_cache.insert(text.to_string(), new_layout);
-                new_layout
-            }
-        }
+    fn layoutJob(&mut self, text: &str) -> LayoutJob {
+        
     }
 }
 
@@ -153,9 +135,8 @@ fn text_editor_ui (
         .resizable(false)
         .show(ctx, |ui| {
             let mut layouter = |ui: &Ui, string: &str, wrap_width: f32| {
-                editor_layout_job.layout_job.text= String::from(string);
-                editor_layout_job.layout_job.wrap.max_width = wrap_width;
-                ui.fonts(|f| f.layout_job(editor_layout_job.layout_job))
+                let layout = *editor_layout_job.layoutJob(string);
+                ui.fonts(|f| f.layout_job(layout))
             };
 
             let textedit = TextEdit::singleline(&mut uistate.text_edit)
