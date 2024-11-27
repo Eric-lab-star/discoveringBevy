@@ -1,3 +1,8 @@
+
+//modules 
+mod resources;
+
+// external dependencies
 use core::f32;
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
@@ -14,64 +19,14 @@ use bevy_egui::egui::{
     FontFamily, Key, FontData, FontId
 };
 
-#[derive(Default, Resource)]
-struct UIState {
-    output: Arc<Mutex<String>>,
-    text_edit: String,
-}
 
-#[derive(Resource, Default)]
-struct ImeValue {
-    trig_backspace: bool,
-}
 
-#[derive( Resource)]
-struct EditorLayoutJob {
-    cache: Arc<Mutex<HashMap<String, LayoutJob>>>
-}
-
-impl Default for EditorLayoutJob {
-    fn default() -> Self {
-        Self {
-            cache: Arc::new(Mutex::new(HashMap::new()))
-        }
-    }
-}
-
-impl EditorLayoutJob {
-    fn get(&self, key: &str, wrap_width: f32) -> LayoutJob {
-        let cache = Arc::clone(&self.cache);
-        let mut hashmap = cache.lock().unwrap();
-        let layoutjob = hashmap.get(key);
-        match layoutjob {
-            Some(value) => {
-                value.clone()
-            }
-            None => {
-                let mut new_job = LayoutJob::simple_singleline(
-                    key.to_string(),
-                    FontId::proportional(20.0),
-                    Color32::WHITE
-                );
-
-                new_job.wrap.max_width = wrap_width; 
-
-                let clone = new_job.clone();
-                if hashmap.len() > 100 {
-                    hashmap.clear();
-                }
-                hashmap.insert(key.to_string(), new_job);
-                clone
-            }
-        }
-    }
-}
 
 fn main() {
     App::new()
-        .init_resource::<UIState>()
-        .init_resource::<ImeValue>()
-        .init_resource::<EditorLayoutJob>()
+        .init_resource::<resources::UIState>()
+        .init_resource::<resources::ImeValue>()
+        .init_resource::<resources::EditorLayoutJob>()
         .add_plugins(
             DefaultPlugins.set(WindowPlugin {
                 primary_window: Some(Window {
@@ -108,8 +63,8 @@ fn trigger_ime_event(
     keyboard: Res<ButtonInput<KeyCode>>,
     win_entity: Query<Entity, With<PrimaryWindow>>,
     pri_window: Query<&Window, With<PrimaryWindow>>,
-    mut ime_value: ResMut<ImeValue>,
-    mut ui_state: ResMut<UIState>
+    mut ime_value: ResMut<resources::ImeValue>,
+    mut ui_state: ResMut<resources::UIState>
 ) {
     let pri_window = pri_window.single();
     if pri_window.ime_enabled {
@@ -129,7 +84,7 @@ fn trigger_ime_event(
 
 fn listen_ime_event (
     mut events: EventReader<Ime>,
-    mut ime_value: ResMut<ImeValue>
+    mut ime_value: ResMut<resources::ImeValue>
 ) {
     for event in events.read() {
         match event {
@@ -145,10 +100,10 @@ fn listen_ime_event (
 
 
 fn text_editor_ui (
-    mut uistate: ResMut<UIState>,
+    mut uistate: ResMut<resources::UIState>,
     mut contexts: EguiContexts,
     mut primary_window: Query<&mut Window, With<PrimaryWindow>>,
-    editor_layout_job: Res<EditorLayoutJob>
+    editor_layout_job: Res<resources::EditorLayoutJob>
 
 ) {
     let ctx = contexts.ctx_mut();
