@@ -4,29 +4,34 @@ mod resources;
 
 // external dependencies
 use core::f32;
-use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 
 // bevy
 use bevy::prelude::*;
 use bevy::window::PrimaryWindow;
 
+use bevy_egui::egui::text::LayoutJob;
 /// egui
 use bevy_egui::{ EguiContexts, EguiPlugin};
 use bevy_egui::egui::{
-    Align, RichText, TextEdit, TopBottomPanel, Vec2 as E_Vec2,
-    text::LayoutJob, Color32, Ui, FontDefinitions,
-    FontFamily, Key, FontData, FontId
+    Align, Color32, FontData, FontDefinitions, FontFamily, FontId, Key, RichText, TextEdit, TextFormat, TopBottomPanel, Ui, Vec2 as E_Vec2
 };
 
+#[derive(Component)]
+struct Score(i32);
 
-
+impl Default for Score {
+    fn default() -> Self {
+        Self(0)
+    }
+}
 
 fn main() {
     App::new()
         .init_resource::<resources::UIState>()
         .init_resource::<resources::ImeValue>()
         .init_resource::<resources::EditorLayoutJob>()
+        .init_resource::<resources::BasicLevel>()
         .add_plugins(
             DefaultPlugins.set(WindowPlugin {
                 primary_window: Some(Window {
@@ -38,27 +43,59 @@ fn main() {
         )
         .add_plugins(EguiPlugin)
         .add_systems(Startup, setup)
+        .add_systems(Startup, egui_setup)
         .add_systems(Update, listen_ime_event)
         .add_systems(Update, text_editor_ui)
         .add_systems(Update, trigger_ime_event)
         .run();
 }
 
-fn setup(
+fn setup (
+    mut commands: Commands,
+    asset_server: Res<AssetServer>,
+) {
+    let font = asset_server.load("../assets/fonts/korean/NotoSansKR-Bold.ttf");
+    let text_style = TextStyle  {
+        font,
+        font_size: 60.0,
+        color: Color::WHITE,
+    };
+    let justification = JustifyText::Center;
+
+    commands.spawn(Camera2dBundle::default());
+    commands.spawn(Score::default());
+    commands.spawn(
+        Text2dBundle {
+            text: Text {
+                sections: vec![TextSection { 
+                    value: "안녕하세요".to_string(),
+                    style: text_style,
+                }],
+                justify: justification,
+                ..default()
+            },
+            ..default()
+        }
+    );
+}
+
+fn egui_setup (
     mut contexts: EguiContexts,
 ) {
     let ctx = contexts.ctx_mut();
     let mut fonts = FontDefinitions::default();
+
     fonts.font_data.insert(
         "korean".to_owned(),
         FontData::from_static(include_bytes!("../assets/fonts/korean/NotoSansKR-Bold.ttf")));
 
     fonts.families.get_mut(&FontFamily::Proportional).unwrap()
         .insert(0, "korean".to_owned());
+
     ctx.set_fonts(fonts);
 }
 
-fn trigger_ime_event(
+fn trigger_ime_event (
     mut ime_event_wr: EventWriter<Ime>,
     keyboard: Res<ButtonInput<KeyCode>>,
     win_entity: Query<Entity, With<PrimaryWindow>>,
@@ -67,6 +104,7 @@ fn trigger_ime_event(
     mut ui_state: ResMut<resources::UIState>
 ) {
     let pri_window = pri_window.single();
+
     if pri_window.ime_enabled {
         if keyboard.just_pressed(KeyCode::Backspace)
             && ime_value.trig_backspace {
@@ -98,15 +136,18 @@ fn listen_ime_event (
     }
 }
 
-
+//Botom Panel 
 fn text_editor_ui (
     mut uistate: ResMut<resources::UIState>,
     mut contexts: EguiContexts,
     mut primary_window: Query<&mut Window, With<PrimaryWindow>>,
-    editor_layout_job: Res<resources::EditorLayoutJob>
+    editor_layout_job: Res<resources::EditorLayoutJob>,
+    mut score: Query<&mut Score>,
 
 ) {
     let ctx = contexts.ctx_mut();
+
+    let mut score = score.single_mut();
 
     TopBottomPanel::bottom("bottom")
         .min_height(100.0)
@@ -134,13 +175,17 @@ fn text_editor_ui (
                 window.ime_enabled = false;
             }
 
-            // print input to output area
             if response.lost_focus() && ui.input(|i| i.key_pressed(Key::Enter)) {
                 uistate.output = Arc::new(Mutex::new(String::new()));
                 match uistate.output.lock() {
-                    Ok(mut input) => {
-                        input.push_str(&*uistate.text_edit);
+                    Ok(mut output) => {
+                        let input = &*uistate.text_edit;
+                        output.push_str(input);
+                        if input == "안녕하세요" {
+                            score.0 += 1;
+                        }
                     },
+
                     Err(e) => {
                         println!("Error: {:?}", e);
                     }
@@ -150,12 +195,35 @@ fn text_editor_ui (
             }
 
             match uistate.output.lock() {
-                Ok(input) => {
-                    ui.label(&*input);
+                Ok(output) => {
+                    ui.label(&*output);
                 },
+
                 Err(e) => {
                     println!("Error: {:?}", e);
                 }
             }
+
+            let mut job =  LayoutJob::default();
+            job.append (
+                "Score: ",
+                0.0,
+                TextFormat {
+                    font_id: FontId::proportional(15.0),
+                    ..default()
+                }
+            );
+
+            job.append (
+                &score.0.to_string(),
+                0.0,
+                TextFormat {
+                    color: Color32::RED,
+                    font_id: FontId::proportional(15.0),
+                    ..default()
+                }
+            );
+
+            ui.label(job);
         });
 }

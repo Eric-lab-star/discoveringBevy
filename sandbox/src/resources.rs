@@ -59,7 +59,6 @@ impl EditorLayoutJob {
 }
 
 #[derive(Resource)]
-
 pub struct BasicLevel {
     names: Vec<String>,
 }
@@ -76,10 +75,16 @@ impl Default for BasicLevel {
             "다현".to_string(),
         ];
 
-        let basic = BasicLevel  {
-            names: name_s
+        BasicLevel  {
+            names: name_list
         }
+    }
 
+}
+
+impl BasicLevel {
+    pub fn names(&self) -> &Vec<String> {
+        &self.names
     }
 }
 
