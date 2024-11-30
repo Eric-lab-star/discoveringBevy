@@ -14,7 +14,8 @@ use bevy_egui::egui::text::LayoutJob;
 /// egui
 use bevy_egui::{ EguiContexts, EguiPlugin};
 use bevy_egui::egui::{
-    Align, Color32, FontData, FontDefinitions, FontFamily, FontId, Key, RichText, TextEdit, TextFormat, TopBottomPanel, Ui, Vec2 as E_Vec2
+    Align, Color32, FontData, FontDefinitions, FontFamily, FontId, Key, RichText, TextEdit,
+    TextFormat, TopBottomPanel, Ui, Vec2 as E_Vec2
 };
 
 #[derive(Component)]
@@ -143,6 +144,7 @@ fn text_editor_ui (
     mut primary_window: Query<&mut Window, With<PrimaryWindow>>,
     editor_layout_job: Res<resources::EditorLayoutJob>,
     mut score: Query<&mut Score>,
+    basic_level: Res<resources::BasicLevel>,
 
 ) {
     let ctx = contexts.ctx_mut();
