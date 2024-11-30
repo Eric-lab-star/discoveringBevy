@@ -15,11 +15,10 @@ pub struct ImeValue {
 }
 
 
-#[derive( Resource)]
+#[derive(Resource)]
 pub struct EditorLayoutJob {
     cache: Arc<Mutex<HashMap<String, LayoutJob>>>
 }
-
 
 impl Default for EditorLayoutJob {
     fn default() -> Self {
