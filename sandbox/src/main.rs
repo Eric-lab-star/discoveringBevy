@@ -8,6 +8,7 @@ use std::sync::{Arc, Mutex};
 
 // bevy
 use bevy::prelude::*;
+use bevy::text::Text2dBounds;
 use bevy::window::PrimaryWindow;
 
 use bevy_egui::egui::text::LayoutJob;
@@ -32,7 +33,7 @@ fn main() {
         .init_resource::<resources::UIState>()
         .init_resource::<resources::ImeValue>()
         .init_resource::<resources::EditorLayoutJob>()
-        .init_resource::<resources::BasicLevel>()
+        .init_resource::<resources::Words>()
         .add_plugins(
             DefaultPlugins.set(WindowPlugin {
                 primary_window: Some(Window {
@@ -48,8 +49,11 @@ fn main() {
         .add_systems(Update, listen_ime_event)
         .add_systems(Update, text_editor_ui)
         .add_systems(Update, trigger_ime_event)
+        .add_systems(Update, change_words)
         .run();
 }
+
+
 
 fn setup (
     mut commands: Commands,
@@ -68,9 +72,9 @@ fn setup (
     commands.spawn(
         Text2dBundle {
             text: Text {
-                sections: vec![TextSection { 
+                sections: vec![TextSection {
                     value: "안녕하세요".to_string(),
-                    style: text_style,
+                    style: text_style,                                       
                 }],
                 justify: justification,
                 ..default()
@@ -78,6 +82,15 @@ fn setup (
             ..default()
         }
     );
+}
+
+fn change_words (
+    words: Res<resources::Words>,
+    mut text: Query<&mut Text, With<Text2dBounds>>,
+) {
+    let mut text = text.single_mut();
+    let list = words.list();
+    text.sections[0].value = list.get(words.current_index()).unwrap().to_string();
 }
 
 fn egui_setup (
@@ -144,7 +157,7 @@ fn text_editor_ui (
     mut primary_window: Query<&mut Window, With<PrimaryWindow>>,
     editor_layout_job: Res<resources::EditorLayoutJob>,
     mut score: Query<&mut Score>,
-    basic_level: Res<resources::BasicLevel>,
+    mut words: ResMut<resources::Words>,
 
 ) {
     let ctx = contexts.ctx_mut();
@@ -183,8 +196,12 @@ fn text_editor_ui (
                     Ok(mut output) => {
                         let input = &*uistate.text_edit;
                         output.push_str(input);
-                        if input == "안녕하세요" {
+                        let correct_word = words.list().get(words.current_index()).unwrap();
+                        if input ==  correct_word {
                             score.0 += 1;
+                            words.next_word();
+
+                            
                         }
                     },
 
