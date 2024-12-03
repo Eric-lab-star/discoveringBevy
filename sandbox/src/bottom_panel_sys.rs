@@ -6,54 +6,55 @@ use std::sync::{Arc, Mutex};
 use bevy_egui::{ EguiContexts};
 use bevy_egui::egui::text::LayoutJob;
 use bevy_egui::egui::{
-    Align, Color32, FontId, Key, RichText, TextBuffer, TextEdit, TextFormat, TopBottomPanel, Ui, Vec2 
+    Align, Color32, FontId,
+    Galley, Key, RichText,
+    TextEdit, TextFormat, TopBottomPanel, Ui, Vec2 
 };
+
 
 
 use crate::{resources, Score};
 
-//TODO: reduce size of text_editor_ui function
-fn type_box<'t>(editor_layout_job: Res<resources::EditorLayoutJob>, text_buffer: Res<resources::UIState>) -> TextEdit {
 
-    let mut layouter = |ui: &Ui, string: &str, wrap_width: f32| {
-        let job = editor_layout_job.get(string, wrap_width);
-        ui.fonts(|f| f.layout_job(job))
-    };
-
-    TextEdit::singleline(&mut text_buffer.text_edit)
-        .hint_text(RichText::new("Press Enter to Submit Your Answer").size(20.0))
-        .layouter(&mut layouter)
-        .frame(false)
-        .min_size(Vec2{x: 100.0, y: 40.0})
-        .desired_width(f32::INFINITY)
-        .vertical_align(Align::Center)
+fn type_layout_job (
+) -> impl Fn(&Ui, &str, f32) -> Arc<Galley>
+{
+    |ui: &Ui, text: &str, wrap_width: f32| {
+        ui.fonts(|f| {
+            let mut textarea_layoutjob = LayoutJob::simple_singleline(
+                text.to_string(),
+                FontId::proportional(20.0),
+                Color32::WHITE);
+            textarea_layoutjob.wrap.max_width = wrap_width;
+            f.layout_job(textarea_layoutjob)
+        })
+    }
 }
 
 pub fn text_editor_ui (
     mut uistate: ResMut<resources::UIState>,
     mut contexts: EguiContexts,
     mut primary_window: Query<&mut Window, With<PrimaryWindow>>,
-    editor_layout_job: Res<resources::EditorLayoutJob>,
+    mut editor_layout_job: ResMut<resources::EditorLayoutJob>,
     mut score: Query<&mut Score>,
     mut words: ResMut<resources::Words>,
 
 ) {
     let ctx = contexts.ctx_mut();
+    let textarea_layout_cache = editor_layout_job.cache;
 
     let mut score = score.single_mut();
+
 
     TopBottomPanel::bottom("bottom")
         .min_height(100.0)
         .resizable(false)
         .show(ctx, |ui| {
-            let mut layouter = |ui: &Ui, string: &str, wrap_width: f32| {
-                let job = editor_layout_job.get(string, wrap_width);
-                ui.fonts(|f| f.layout_job(job))
-            };
+            let mut type_layouter= type_layout_job();
 
             let textedit = TextEdit::singleline(&mut uistate.text_edit)
                 .hint_text(RichText::new("Press Enter to Submit Your Answer").size(20.0))
-                .layouter(&mut layouter)
+                .layouter(&mut type_layouter)
                 .frame(false)
                 .min_size(Vec2{x: 100.0, y: 40.0})
                 .desired_width(f32::INFINITY)

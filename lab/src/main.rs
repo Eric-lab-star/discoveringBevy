@@ -1,12 +1,23 @@
-use std::collections::HashMap;
+
+fn largest<T: std::cmp::PartialOrd>(list: &[T]) -> &T{
+    let mut largest = &list[0];
+    for item in list {
+        if item > largest {
+            largest = item;
+        }
+    }
+    largest
+}
 
 fn main() {
-    println!("Hello, world!");
-    let mut map = HashMap::new();
-    map.insert("1", "hello");
-    map.insert("2", "hi");
-    map.insert("2", "hello");
-    for (key, val) in map.iter() {
-        println!("{}: {}",key, val);
+    let number_list = vec![34, 50, 25, 100];
+
+    let mut largest = &number_list[0];
+
+    for number in &number_list {
+        if number > largest {
+            largest = number;
+        }
     }
 }
+
