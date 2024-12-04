@@ -17,7 +17,7 @@ pub struct ImeValue {
 
 #[derive(Resource)]
 pub struct EditorLayoutJob {
-    pub cache: Arc<Mutex<HashMap<String, LayoutJob>>>
+    cache: Arc<Mutex<HashMap<String, LayoutJob>>>
 }
 
 impl Default for EditorLayoutJob {
@@ -29,31 +29,9 @@ impl Default for EditorLayoutJob {
 }
 
 impl EditorLayoutJob {
-    pub fn is_exist(&self, key: &str, wrap_width: f32) -> LayoutJob {
+    pub fn cache(&self) -> Arc<Mutex<HashMap<String, LayoutJob>>>{
         let cache = Arc::clone(&self.cache);
-        let mut hashmap = cache.lock().unwrap();
-        let layoutjob = hashmap.get(key);
-        match layoutjob {
-            Some(value) => {
-                value.clone()
-            }
-            None => {
-                let mut new_job = LayoutJob::simple_singleline(
-                    key.to_string(),
-                    FontId::proportional(20.0),
-                    Color32::WHITE
-                );
-
-                new_job.wrap.max_width = wrap_width; 
-
-                let clone = new_job.clone();
-                if hashmap.len() > 100 {
-                    hashmap.clear();
-                }
-                hashmap.insert(key.to_string(), new_job);
-                clone
-            }
-        }
+        cache
     }
 }
 

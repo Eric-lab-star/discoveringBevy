@@ -16,18 +16,33 @@ use bevy_egui::egui::{
 use crate::{resources, Score};
 
 
-fn type_layout_job (
-) -> impl Fn(&Ui, &str, f32) -> Arc<Galley>
+fn type_layout_job<'a> (
+    layout_cache: &'a Res<resources::EditorLayoutJob>
+) -> impl Fn(&Ui, &'a str, f32) -> Arc<Galley>
 {
     |ui: &Ui, text: &str, wrap_width: f32| {
         ui.fonts(|f| {
-            let mut textarea_layoutjob = LayoutJob::simple_singleline(
-                text.to_string(),
-                FontId::proportional(20.0),
-                Color32::WHITE);
-            textarea_layoutjob.wrap.max_width = wrap_width;
-            f.layout_job(textarea_layoutjob)
+            let cache = layout_cache.cache();
+            let cache = cache.lock().unwrap().entry(text.to_string()).or_insert_with(|| {
+                let mut textarea_layoutjob = LayoutJob::simple_singleline(
+                    text.to_string(),
+                    FontId::proportional(20.0),
+                    Color32::WHITE);
+                textarea_layoutjob.wrap.max_width = wrap_width;
+                textarea_layoutjob
+            }).clone();
+
+            f.layout_job(cache)
+        //             let mut textarea_layoutjob = LayoutJob::simple_singleline(
+        //                 text.to_string(),
+        //                 FontId::proportional(20.0),
+        //                 Color32::WHITE);
+        //             textarea_layoutjob.wrap.max_width = wrap_width;
+        // 
+        //     f.layout_job(textarea_layoutjob)
         })
+
+        
     }
 }
 
@@ -41,16 +56,14 @@ pub fn text_editor_ui (
 
 ) {
     let ctx = contexts.ctx_mut();
-    let textarea_layout_cache = editor_layout_job.cache;
 
     let mut score = score.single_mut();
-
 
     TopBottomPanel::bottom("bottom")
         .min_height(100.0)
         .resizable(false)
         .show(ctx, |ui| {
-            let mut type_layouter= type_layout_job();
+            let mut type_layouter= type_layout_job(&editor_layout_job);
 
             let textedit = TextEdit::singleline(&mut uistate.text_edit)
                 .hint_text(RichText::new("Press Enter to Submit Your Answer").size(20.0))
