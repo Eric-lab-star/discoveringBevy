@@ -11,14 +11,12 @@ use bevy_egui::egui::{
     TextEdit, TextFormat, TopBottomPanel, Ui, Vec2 
 };
 
-
-
 use crate::{resources, Score};
 
 
 fn type_layout_job<'a> (
     layout_cache: &'a Res<resources::EditorLayoutJob>
-) -> impl Fn(&Ui, &'a str, f32) -> Arc<Galley>
+) -> impl Fn(&Ui, &str, f32) -> Arc<Galley> + 'a
 {
     |ui: &Ui, text: &str, wrap_width: f32| {
         ui.fonts(|f| {
@@ -33,16 +31,7 @@ fn type_layout_job<'a> (
             }).clone();
 
             f.layout_job(cache)
-        //             let mut textarea_layoutjob = LayoutJob::simple_singleline(
-        //                 text.to_string(),
-        //                 FontId::proportional(20.0),
-        //                 Color32::WHITE);
-        //             textarea_layoutjob.wrap.max_width = wrap_width;
-        // 
-        //     f.layout_job(textarea_layoutjob)
         })
-
-        
     }
 }
 
@@ -50,7 +39,7 @@ pub fn text_editor_ui (
     mut uistate: ResMut<resources::UIState>,
     mut contexts: EguiContexts,
     mut primary_window: Query<&mut Window, With<PrimaryWindow>>,
-    mut editor_layout_job: ResMut<resources::EditorLayoutJob>,
+    editor_layout_job: Res<resources::EditorLayoutJob>,
     mut score: Query<&mut Score>,
     mut words: ResMut<resources::Words>,
 
@@ -63,7 +52,7 @@ pub fn text_editor_ui (
         .min_height(100.0)
         .resizable(false)
         .show(ctx, |ui| {
-            let mut type_layouter= type_layout_job(&editor_layout_job);
+            let mut type_layouter = type_layout_job(&editor_layout_job);
 
             let textedit = TextEdit::singleline(&mut uistate.text_edit)
                 .hint_text(RichText::new("Press Enter to Submit Your Answer").size(20.0))

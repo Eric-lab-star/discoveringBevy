@@ -1,6 +1,6 @@
 
 use bevy::prelude::*;
-use bevy_egui::egui::{text::LayoutJob, Color32, FontId};
+use bevy_egui::egui::{text::LayoutJob};
 use std::{collections::HashMap, sync::{Arc, Mutex}};
 
 #[derive(Default, Resource)]
@@ -16,7 +16,7 @@ pub struct ImeValue {
 
 
 #[derive(Resource)]
-pub struct EditorLayoutJob {
+pub struct  EditorLayoutJob {
     cache: Arc<Mutex<HashMap<String, LayoutJob>>>
 }
 
