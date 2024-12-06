@@ -6,12 +6,36 @@ use std::sync::{Arc, Mutex};
 use bevy_egui::{ EguiContexts};
 use bevy_egui::egui::text::LayoutJob;
 use bevy_egui::egui::{
-    Align, Color32, FontId,
-    Key, RichText,
-    TextEdit, TextFormat, TopBottomPanel, Vec2 
+    Align, Color32, FontId, Galley, Key, RichText, TextEdit, TextFormat, TopBottomPanel, Ui, Vec2 
 };
 
 use crate::{resources, Score};
+
+#[derive(Component)]
+pub struct TextEditor<'a> {
+    editor: TextEdit<'a>, 
+}
+
+impl<'a> TextEditor<'a> {
+    pub fn new(
+        text_buffer: &'a mut String,
+        layouter: &'a mut dyn FnMut(&Ui, &str, f32) -> Arc<Galley>
+    ) -> Self 
+    {
+        let editor = TextEdit::singleline(text_buffer)
+            .hint_text(RichText::new("Press Enter to Submit Your Answer").size(20.0))
+            .layouter(layouter)
+            .frame(false)
+            .min_size(Vec2{x: 100.0, y: 40.0})
+            .desired_width(f32::INFINITY)
+            .vertical_align(Align::Center);
+
+        TextEditor {
+            editor 
+        }
+
+    }
+}
 
 pub fn text_editor_ui (
     mut uistate: ResMut<resources::UIState>,

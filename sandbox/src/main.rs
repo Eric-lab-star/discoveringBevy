@@ -15,6 +15,7 @@ use bevy_egui::{ EguiContexts, EguiPlugin};
 use bevy_egui::egui::{
     FontData, FontDefinitions, FontFamily, 
 };
+use bottom_panel_sys::TextEditor;
 
 #[derive(Component)]
 struct Score(i32);
@@ -79,7 +80,9 @@ fn setup (
 
 fn egui_setup (
     mut contexts: EguiContexts,
+    mut commands: Commands,
 ) {
+    
     let ctx = contexts.ctx_mut();
     let mut fonts = FontDefinitions::default();
 
