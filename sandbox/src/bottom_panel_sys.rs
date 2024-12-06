@@ -7,39 +7,17 @@ use bevy_egui::{ EguiContexts};
 use bevy_egui::egui::text::LayoutJob;
 use bevy_egui::egui::{
     Align, Color32, FontId,
-    Galley, Key, RichText,
-    TextEdit, TextFormat, TopBottomPanel, Ui, Vec2 
+    Key, RichText,
+    TextEdit, TextFormat, TopBottomPanel, Vec2 
 };
 
 use crate::{resources, Score};
-
-
-fn type_layout_job<'a> (
-    layout_cache: &'a Res<resources::EditorLayoutJob>
-) -> impl Fn(&Ui, &str, f32) -> Arc<Galley> + 'a
-{
-    |ui: &Ui, text: &str, wrap_width: f32| {
-        ui.fonts(|f| {
-            let cache = layout_cache.cache();
-            let cache = cache.lock().unwrap().entry(text.to_string()).or_insert_with(|| {
-                let mut textarea_layoutjob = LayoutJob::simple_singleline(
-                    text.to_string(),
-                    FontId::proportional(20.0),
-                    Color32::WHITE);
-                textarea_layoutjob.wrap.max_width = wrap_width;
-                textarea_layoutjob
-            }).clone();
-
-            f.layout_job(cache)
-        })
-    }
-}
 
 pub fn text_editor_ui (
     mut uistate: ResMut<resources::UIState>,
     mut contexts: EguiContexts,
     mut primary_window: Query<&mut Window, With<PrimaryWindow>>,
-    editor_layout_job: Res<resources::EditorLayoutJob>,
+    layout_cache: Res<resources::TextEditorLayoutJobCache>,
     mut score: Query<&mut Score>,
     mut words: ResMut<resources::Words>,
 
@@ -52,11 +30,11 @@ pub fn text_editor_ui (
         .min_height(100.0)
         .resizable(false)
         .show(ctx, |ui| {
-            let mut type_layouter = type_layout_job(&editor_layout_job);
+            let mut textarea_layoutjob = layout_cache.textarea_layouter();
 
             let textedit = TextEdit::singleline(&mut uistate.text_edit)
                 .hint_text(RichText::new("Press Enter to Submit Your Answer").size(20.0))
-                .layouter(&mut type_layouter)
+                .layouter(&mut textarea_layoutjob)
                 .frame(false)
                 .min_size(Vec2{x: 100.0, y: 40.0})
                 .desired_width(f32::INFINITY)

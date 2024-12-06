@@ -1,6 +1,9 @@
 
 use bevy::prelude::*;
 use bevy_egui::egui::{text::LayoutJob};
+use bevy_egui::egui::{
+    Ui, FontId, Color32, Galley
+};
 use std::{collections::HashMap, sync::{Arc, Mutex}};
 
 #[derive(Default, Resource)]
@@ -16,11 +19,11 @@ pub struct ImeValue {
 
 
 #[derive(Resource)]
-pub struct  EditorLayoutJob {
+pub struct  TextEditorLayoutJobCache {
     cache: Arc<Mutex<HashMap<String, LayoutJob>>>
 }
 
-impl Default for EditorLayoutJob {
+impl Default for TextEditorLayoutJobCache {
     fn default() -> Self {
         Self {
             cache: Arc::new(Mutex::new(HashMap::new()))
@@ -28,10 +31,37 @@ impl Default for EditorLayoutJob {
     }
 }
 
-impl EditorLayoutJob {
+impl TextEditorLayoutJobCache {
     pub fn cache(&self) -> Arc<Mutex<HashMap<String, LayoutJob>>>{
         let cache = Arc::clone(&self.cache);
         cache
+    }
+
+    /// print hashmap size
+    /// with info!
+    fn _print_len(&self)  {
+        let hashmap = self.cache.lock().unwrap();
+        info!("{}",hashmap.len());
+    }
+
+    pub fn textarea_layouter<'a> (
+        &'a self
+    ) -> impl Fn(&Ui, &str, f32) -> Arc<Galley> +'a {
+        |ui: &Ui, text: &str, wrap_width: f32| {
+            ui.fonts(|f| {
+                let cache = &self.cache();
+                let cache = cache.lock().unwrap().entry(text.to_string()).or_insert_with(|| {
+                    let mut textarea_layoutjob = LayoutJob::simple_singleline(
+                        text.to_string(),
+                        FontId::proportional(20.0),
+                        Color32::WHITE);
+                    textarea_layoutjob.wrap.max_width = wrap_width;
+                    textarea_layoutjob
+                }).clone();
+
+                f.layout_job(cache)
+            })
+        }
     }
 }
 

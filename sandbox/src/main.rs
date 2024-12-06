@@ -29,7 +29,7 @@ fn main() {
     App::new()
         .init_resource::<resources::UIState>()
         .init_resource::<resources::ImeValue>()
-        .init_resource::<resources::EditorLayoutJob>()
+        .init_resource::<resources::TextEditorLayoutJobCache>()
         .init_resource::<resources::Words>()
         .add_plugins(
             DefaultPlugins.set(WindowPlugin {
