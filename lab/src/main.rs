@@ -5,24 +5,22 @@ struct Rect {
 }
 
 impl Rect {
-    fn new() -> Rect{
-        Rect {
-            width: 9,
-            height: 10
-        }
+    fn area(&self) -> i32 {
+        self.width * self.height
     }
 }
 
 
 
-static QUANTITY: Rect = Rect { width: 10, height: 10 };
-fn dangle() -> &'static Rect{
-    &QUANTITY
-}
 
 
 fn main() {
-    dangle();
+    let x = Rect {
+        width: 20,
+        height: 10,
+    };
+    let a = x.area();
+    println!("{}", a)
 }
 
 
