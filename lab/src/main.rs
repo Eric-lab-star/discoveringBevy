@@ -1,23 +1,29 @@
+#[derive(Debug)]
+struct Rect {
+    width: i32,
+    height: i32,
+}
 
-fn largest<T: std::cmp::PartialOrd>(list: &[T]) -> &T{
-    let mut largest = &list[0];
-    for item in list {
-        if item > largest {
-            largest = item;
+impl Rect {
+    fn new() -> Rect{
+        Rect {
+            width: 9,
+            height: 10
         }
     }
-    largest
 }
+
+
+
+static QUANTITY: Rect = Rect { width: 10, height: 10 };
+fn dangle() -> &'static Rect{
+    &QUANTITY
+}
+
 
 fn main() {
-    let number_list = vec![34, 50, 25, 100];
-
-    let mut largest = &number_list[0];
-
-    for number in &number_list {
-        if number > largest {
-            largest = number;
-        }
-    }
+    dangle();
 }
+
+
 

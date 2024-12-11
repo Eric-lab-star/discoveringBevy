@@ -11,29 +11,20 @@ use bevy_egui::egui::{
 
 use crate::{resources, Score};
 
-#[derive(Component)]
 pub struct TextEditor<'a> {
-    editor: TextEdit<'a>, 
+    text_buffer: &'a mut  String,
+    layouter: &'a mut dyn FnMut(&Ui, &str, f32) -> Arc<Galley>
 }
 
 impl<'a> TextEditor<'a> {
-    pub fn new(
-        text_buffer: &'a mut String,
-        layouter: &'a mut dyn FnMut(&Ui, &str, f32) -> Arc<Galley>
-    ) -> Self 
-    {
-        let editor = TextEdit::singleline(text_buffer)
+    pub fn single_line(&mut self) -> TextEdit{
+        TextEdit::singleline(self.text_buffer)
             .hint_text(RichText::new("Press Enter to Submit Your Answer").size(20.0))
-            .layouter(layouter)
+            .layouter(self.layouter)
             .frame(false)
             .min_size(Vec2{x: 100.0, y: 40.0})
             .desired_width(f32::INFINITY)
-            .vertical_align(Align::Center);
-
-        TextEditor {
-            editor 
-        }
-
+            .vertical_align(Align::Center)
     }
 }
 
@@ -55,16 +46,11 @@ pub fn text_editor_ui (
         .resizable(false)
         .show(ctx, |ui| {
             let mut textarea_layoutjob = layout_cache.textarea_layouter();
-
-            let textedit = TextEdit::singleline(&mut uistate.text_edit)
-                .hint_text(RichText::new("Press Enter to Submit Your Answer").size(20.0))
-                .layouter(&mut textarea_layoutjob)
-                .frame(false)
-                .min_size(Vec2{x: 100.0, y: 40.0})
-                .desired_width(f32::INFINITY)
-                .vertical_align(Align::Center);
-
-            let response = ui.add(textedit);
+            let mut textedit = TextEditor {
+                text_buffer: &mut uistate.text_edit,
+                layouter: &mut textarea_layoutjob
+            };
+            let response = ui.add(textedit.single_line());
             let mut window = primary_window.single_mut();
 
             if response.has_focus() {
@@ -77,7 +63,7 @@ pub fn text_editor_ui (
                 uistate.output = Arc::new(Mutex::new(String::new()));
                 match uistate.output.lock() {
                     Ok(mut output) => {
-                        let input = &*uistate.text_edit;
+                        let input = &uistate.text_edit;
                         output.push_str(input);
                         let correct_word = words.list().get(words.current_index()).unwrap();
                         if input ==  correct_word {

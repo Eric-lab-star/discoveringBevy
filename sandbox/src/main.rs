@@ -1,4 +1,3 @@
-
 //modules 
 mod resources;
 mod type_me_sys;
@@ -9,13 +8,12 @@ mod bottom_panel_sys;
 
 // bevy
 use bevy::prelude::*;
-
-/// egui
+//hello world
+// egui
 use bevy_egui::{ EguiContexts, EguiPlugin};
 use bevy_egui::egui::{
     FontData, FontDefinitions, FontFamily, 
 };
-use bottom_panel_sys::TextEditor;
 
 #[derive(Component)]
 struct Score(i32);
@@ -44,10 +42,13 @@ fn main() {
         .add_plugins(EguiPlugin)
         .add_systems(Startup, setup)
         .add_systems(Startup, egui_setup)
-        .add_systems(Update, ime_sys::change_trig_backspace_state)
-        .add_systems(Update, bottom_panel_sys::text_editor_ui)
-        .add_systems(Update, ime_sys::enable_smooth_input_delete)
-        .add_systems(Update, type_me_sys::change_words)
+        .add_systems(Update, (
+                bottom_panel_sys::text_editor_ui,
+                ime_sys::change_trig_backspace_state,
+                ime_sys::enable_smooth_input_delete,
+                type_me_sys::change_words,
+            )
+        )
         .run();
 }
 
@@ -60,7 +61,6 @@ fn setup (
         font_size: 60.0,
         color: Color::WHITE,
     };
-
     commands.spawn(Camera2dBundle::default());
     commands.spawn(Score::default());
     commands.spawn(
@@ -80,7 +80,6 @@ fn setup (
 
 fn egui_setup (
     mut contexts: EguiContexts,
-    mut commands: Commands,
 ) {
     
     let ctx = contexts.ctx_mut();
@@ -95,5 +94,3 @@ fn egui_setup (
 
     ctx.set_fonts(fonts);
 }
-
-

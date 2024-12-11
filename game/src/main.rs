@@ -1,12 +1,12 @@
 use core::f32;
 use std::sync::{Arc, Mutex};
 use bevy::prelude::*;
-use bevy_egui::egui::{FontData, FontId, RawInput};
+use bevy_egui::egui::{FontData, FontId};
 use bevy_egui::{ EguiContexts, EguiPlugin};
 use bevy_egui::egui::{
     Align, Key, RichText, TextEdit, TopBottomPanel, Vec2,
     text::LayoutJob, TextFormat, Color32, Ui, FontDefinitions,
-    FontFamily, text::Fonts,
+    FontFamily,
 };
 
 #[derive(Default, Resource)]
@@ -20,13 +20,9 @@ fn main() {
         .add_plugins(DefaultPlugins)
         .add_plugins(EguiPlugin)
         .add_systems(Startup, setup)
-        .add_systems(PreUpdate, pass)
         .add_systems(Update, ui_example_system)
-        .add_systems(PostUpdate, delta)
         .run();
 }
-
-
 
 fn setup(
     mut contexts: EguiContexts,
@@ -42,27 +38,12 @@ fn setup(
     ctx.set_fonts(fonts);
 }
 
-fn pass(
-    mut context: EguiContexts,
-) {
-    let _ctx = context.ctx_mut();
-}
-
-fn delta (
-    mut context: EguiContexts,
-) {
-    let _ctx = context.ctx_mut();
-}
-
 fn ui_example_system(
     mut uistate: ResMut<UIState>,
     mut contexts: EguiContexts,
     mut user_input: Local<String>
 ) {
     let ctx = contexts.ctx_mut();
-
-
-
     TopBottomPanel::bottom("bottom")
         .min_height(100.0)
         .resizable(false)
